@@ -3784,6 +3784,9 @@ class ChoiceCaller:
         """Information returned here is logged to the autotune log file when that is enabled."""
         return {}
 
+    def autoheuristic_id(self) -> str:
+        raise NotImplementedError
+
 
 class TritonTemplateCallerBase(ChoiceCaller):
     def get_make_kernel_render(self) -> Any:
