@@ -3,9 +3,14 @@
 
 import logging
 from enum import auto, Enum
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
+from torch._inductor.autoheuristic.autoheuristic import AutoHeuristic, GlobalFeedback
+from torch._inductor.autoheuristic.autoheuristic_utils import (
+    AHContext,
+    context_add_strides,
+)
 from .. import config
 from ..ir import (
     ComputedBuffer,
@@ -561,6 +566,38 @@ def flex_attention(*args, **kwargs):
         sparse_kv_num_blocks,
         sparse_kv_indices,
     ] + list(other_buffers)
+
+    if config.run_autoheuristic("flex_attention"):
+
+        def get_context(query, key, value):
+            context = AHContext()
+            b, h, m, n = query.get_size()
+            context.add_feature("b", b)
+            context.add_feature("h", h)
+            context.add_feature("m", m)
+            context.add_feature("n", n)
+            context.add_feature("dtype", query.get_dtype())
+            context_add_strides(context, "q", query.get_stride())
+            return context
+
+        def fallback():
+            return "unsure"
+
+        choicestr2choice: Dict[str, Any] = {"unsure": None}
+        for choice in choices:
+            choicestr2choice[choice.autoheuristic_id()] = choice
+        choices_str = list(choicestr2choice.keys())
+        feedback = GlobalFeedback(inputs=inputs_for_autotuning)
+        context = get_context(query, key, value)
+        autoheuristic = AutoHeuristic(
+            fallback=fallback,
+            choices=choices_str,
+            feedback=feedback,
+            context=context,
+            name="flex_attention",
+        )
+        choice = autoheuristic.get_choice()
+
     return (
         autotune_select_algorithm(
             "flex_attention", choices, inputs_for_autotuning, layout
