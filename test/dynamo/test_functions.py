@@ -1885,6 +1885,7 @@ class GraphModule(torch.nn.Module):
                 """\
 class GraphModule(torch.nn.Module):
     def forward(self, s0: "Sym(s0)", L_lambda0_keywords_y_: "f32[s0, s0]"):
+        s0_1 = s0
         l_lambda0_keywords_y_ = L_lambda0_keywords_y_
 
         mul: "f32[s0, s0]" = l_lambda0_keywords_y_ * l_lambda0_keywords_y_
@@ -1933,6 +1934,7 @@ class GraphModule(torch.nn.Module):
                 """\
 class GraphModule(torch.nn.Module):
     def forward(self, s0: "Sym(s0)", L_lambda0_keywords_y_: "f32[s0, s0]"):
+        s0_1 = s0
         l_lambda0_keywords_y_ = L_lambda0_keywords_y_
 
         mul: "f32[s0, s0]" = l_lambda0_keywords_y_ * l_lambda0_keywords_y_
@@ -1984,6 +1986,7 @@ class GraphModule(torch.nn.Module):
                 """\
 class GraphModule(torch.nn.Module):
     def forward(self, s0: "Sym(s0)", L_lambda0_keywords_y_: "f32[s0, s0]"):
+        s0_1 = s0
         l_lambda0_keywords_y_ = L_lambda0_keywords_y_
 
         mul: "f32[s0, s0]" = l_lambda0_keywords_y_ * l_lambda0_keywords_y_
@@ -2032,6 +2035,7 @@ class GraphModule(torch.nn.Module):
                 """\
 class GraphModule(torch.nn.Module):
     def forward(self, s0: "Sym(s0)", L_x_: "f32[s0, s0]"):
+        s0_1 = s0
         l_x_ = L_x_
 
         mul: "f32[s0, s0]" = l_x_ * 4
