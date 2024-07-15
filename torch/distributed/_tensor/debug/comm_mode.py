@@ -201,9 +201,9 @@ class CommDebugMode(TorchDispatchMode):
             json_dict["operations_backward"] = []
 
             if "module_type" in self.advanced_module_tracker.module_helper_dict[fqn]:
-                json_dict[
-                    "module_type"
-                ] = self.advanced_module_tracker.module_helper_dict[fqn]["module_type"]
+                json_dict["module_type"] = (
+                    self.advanced_module_tracker.module_helper_dict[fqn]["module_type"]
+                )
 
             # adds module collective information
             if fqn in self.comm_module_counts:
