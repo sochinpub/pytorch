@@ -157,7 +157,12 @@ def run_functionalized_fw_and_collect_metadata(
         # It doesn't matter if we run this under predispatch or not because it is
         # only for figuring out metadata
         mode = FunctionalTensorMode(_allow_token_discovery=True)
-        with disable_above, mode:
+
+        # NB: emulate idempotence during metadata collection by preventing the nested
+        # int ID counter from advancing.
+        from torch.nested._internal.nested_tensor import freeze_nested_int_id_counter
+
+        with disable_above, mode, freeze_nested_int_id_counter():
             # precondition: The passed in function already handles unflattening inputs + flattening outputs
             flat_f_args = pytree.tree_map(_to_fun, flat_args)
             flat_f_outs = f(*flat_f_args)
@@ -628,7 +633,16 @@ from a multi-output view call"
                     t, lambda _, inner_t: view_avoid_dupes_with_primals(inner_t)
                 )
             if isinstance(t, Tensor):
-                return t.view(t.shape)
+                out = t.view(t.shape)
+
+                # indicate that the viewed tensor has the same associated nested int
+                # as the source tensor within the nested int registry
+                from torch.nested._internal.nested_tensor import _tensor_symint_registry
+
+                if t in _tensor_symint_registry:
+                    _tensor_symint_registry[out] = _tensor_symint_registry[t]
+
+                return out
             return t
 
         # This analysis function returns *only* the outputs that are meant to be tangents to the backwards.
