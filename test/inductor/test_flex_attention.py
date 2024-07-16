@@ -1415,7 +1415,7 @@ class GraphModule(torch.nn.Module):
         getitem_2: "f64[2, 2, 128, 4]" = flex_attention_backward[0]
         getitem_3: "f64[2, 2, 128, 4]" = flex_attention_backward[1]
         getitem_4: "f64[2, 2, 128, 4]" = flex_attention_backward[2];  flex_attention_backward = None
-        return [getitem_2, getitem_3, getitem_4]
+        return (getitem_2, getitem_3, getitem_4)
 
     class <lambda>(torch.nn.Module):
         def forward(self, arg0_1: "f64[]", arg1_1: "i32[]", arg2_1: "i32[]", arg3_1: "i32[]", arg4_1: "i32[]"):
