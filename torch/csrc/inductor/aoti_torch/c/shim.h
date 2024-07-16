@@ -371,14 +371,13 @@ aoti_torch__scaled_dot_product_efficient_attention(
 AOTI_TORCH_EXPORT AOTITorchError aoti_torch__scaled_mm(
     AtenTensorHandle self,
     AtenTensorHandle mat2,
-    AtenTensorHandle bias,
-    int32_t* out_dtype,
     AtenTensorHandle scale_a,
     AtenTensorHandle scale_b,
+    AtenTensorHandle bias,
     AtenTensorHandle scale_result,
+    int32_t* out_dtype,
     int8_t use_fast_accum,
-    AtenTensorHandle* ret0,
-    AtenTensorHandle* ret1);
+    AtenTensorHandle* ret0);
 
 AOTI_TORCH_EXPORT AOTITorchError aoti_torch_convolution(
     AtenTensorHandle input,

@@ -605,14 +605,13 @@ AOTITorchError aoti_torch_new_uninitialized_tensor(AtenTensorHandle* ret) {
 AOTITorchError aoti_torch__scaled_mm(
     AtenTensorHandle self,
     AtenTensorHandle mat2,
-    AtenTensorHandle bias,
-    int32_t* out_dtype,
     AtenTensorHandle scale_a,
     AtenTensorHandle scale_b,
+    AtenTensorHandle bias,
     AtenTensorHandle scale_result,
+    int32_t* out_dtype,
     int8_t use_fast_accum,
-    AtenTensorHandle* ret0,
-    AtenTensorHandle* ret1) {
+    AtenTensorHandle* ret0) {
   AOTI_TORCH_CONVERT_EXCEPTION_TO_ERROR_CODE({
     at::Tensor* self_tensor = tensor_handle_to_tensor_pointer(self);
     at::Tensor* mat2_tensor = tensor_handle_to_tensor_pointer(mat2);
