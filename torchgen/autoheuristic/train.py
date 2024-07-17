@@ -145,6 +145,9 @@ class AHTrain:
     ):
         pass
 
+    def gen_predict_fn_def(self):
+        pass
+
     def dt_to_python(
         self,
         dt,
@@ -174,7 +177,7 @@ class AHTrain:
                 dt,
             )
         )
-        fn_def = "\n    def predict(self, context: AHContext) -> float:"
+        fn_def = f"\n    {self.gen_predict_fn_def()}"
         lines.append(fn_def)
 
         def dt_to_python(node, depth):
