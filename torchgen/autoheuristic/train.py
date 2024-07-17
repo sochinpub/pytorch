@@ -58,6 +58,11 @@ class AHTrain:
             metavar=("TYPE", "PATH"),
             help="Specify name of datasets and file paths to be evaluated.",
         )
+        self.parser.add_argument(
+            "--save-dot",
+            action="store_true",
+            help="Export heuristic to graphviz dot.",
+        )
 
     def parse_args(self):
         return self.parser.parse_args()
@@ -76,7 +81,11 @@ class AHTrain:
     def generate_heuristic(self):
         self.args = self.parse_args()
         self.main(
-            self.args.dataset, self.args.data, self.args.nrows, self.args.heuristic_name
+            self.args.dataset,
+            self.args.data,
+            self.args.nrows,
+            self.args.heuristic_name,
+            self.args.save_dot,
         )
 
     def filter_df(self, df):
@@ -128,7 +137,7 @@ class AHTrain:
             and str(metadata.device_capa) == "{device_capa}"
         )"""
 
-    def handle_leaf(self, tree_, node, indent):
+    def handle_leaf(self, tree_, node, indent, unsafe_leaves):
         pass
 
     def codegen_boilerplate(
@@ -144,6 +153,7 @@ class AHTrain:
         dummy_col_2_col_val,
         heuristic_name,
         threshold,
+        unsafe_leaves=None,
     ):
         tree_ = dt.tree_
         feature_name = [
@@ -188,7 +198,7 @@ class AHTrain:
                 lines.append(f"{indent}else:")
                 dt_to_python(tree_.children_right[node], depth + 1)
             else:
-                lines.append(self.handle_leaf(tree_, node, indent))
+                lines.append(self.handle_leaf(tree_, node, indent, unsafe_leaves))
 
         dt_to_python(0, 1)
 
