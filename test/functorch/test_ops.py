@@ -465,6 +465,11 @@ class TestOperators(TestCase):
                 device_type="cuda",
             ),
             tol1(
+                "svd_lowrank",
+                {torch.float32: tol(atol=5e-05, rtol=7e-06)},
+                device_type="mps",
+            ),
+            tol1(
                 "linalg.multi_dot",
                 {torch.float32: tol(atol=1e-05, rtol=8e-04)},
                 device_type="cuda",
