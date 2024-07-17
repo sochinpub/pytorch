@@ -920,6 +920,7 @@ elseif(USE_CUDA)
     set_property(TARGET torch_cuda_w_sort_by_key PROPERTY CUDA_SEPARABLE_COMPILATION OFF)
     target_link_libraries(torch_cuda PRIVATE torch_cuda_w_sort_by_key)
   else()
+    message("!! Caffe2_GPU_SRCS: ${Caffe2_GPU_SRCS}, Caffe2_GPU_SRCS_W_SORT_BY_KEY: ${Caffe2_GPU_SRCS_W_SORT_BY_KEY} Caffe2_GPU_CU_SRCS: ${Caffe2_GPU_CU_SRCS}, Caffe2_GPU_CU_SRCS_W_SORT_BY_KEY: ${Caffe2_GPU_CU_SRCS_W_SORT_BY_KEY}")
     add_library(torch_cuda
         ${Caffe2_GPU_SRCS} ${Caffe2_GPU_SRCS_W_SORT_BY_KEY}
         ${Caffe2_GPU_CU_SRCS} ${Caffe2_GPU_CU_SRCS_W_SORT_BY_KEY})
@@ -927,6 +928,8 @@ elseif(USE_CUDA)
   set(CUDA_LINK_LIBRARIES_KEYWORD)
   torch_compile_options(torch_cuda)  # see cmake/public/utils.cmake
   target_compile_definitions(torch_cuda PRIVATE USE_CUDA)
+
+  target_link_libraries(torch_cuda PRIVATE torch::cufile)
 
   if(USE_CUSPARSELT)
       target_link_libraries(torch_cuda PRIVATE torch::cusparselt)
