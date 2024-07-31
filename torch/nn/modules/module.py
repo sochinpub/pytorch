@@ -395,7 +395,7 @@ def _forward_unimplemented(self, *input: Any) -> None:
     )
 
 
-class Module:
+class Module: # 神经网络模块的父类
     r"""Base class for all neural network modules.
 
     Your models should also subclass this class.

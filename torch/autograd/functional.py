@@ -8,7 +8,7 @@ from . import forward_ad as fwAD
 __all__ = ["vjp", "jvp", "jacobian", "hessian", "hvp", "vhp"]
 
 # Utility functions
-
+# 计算图的反向传播
 
 def _as_tuple_nocheck(x):
     if isinstance(x, tuple):

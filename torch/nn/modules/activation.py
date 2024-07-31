@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 
 from .linear import NonDynamicallyQuantizableLinear
 from .module import Module
-
+# 激活函数
 
 __all__ = [
     "Threshold",
@@ -123,16 +123,16 @@ class ReLU(Module):
     """
 
     __constants__ = ["inplace"]
-    inplace: bool
+    inplace: bool                           ## inplace 计算， 默认FALSE
 
     def __init__(self, inplace: bool = False):
         super().__init__()
-        self.inplace = inplace
+        self.inplace = inplace # 数据X
 
     def forward(self, input: Tensor) -> Tensor:
-        return F.relu(input, inplace=self.inplace)
+        return F.relu(input, inplace=self.inplace) # F.relu的类型是function（torch.autograd.function）
 
-    def extra_repr(self) -> str:
+    def extra_repr(self) -> str: # 字符串
         inplace_str = "inplace=True" if self.inplace else ""
         return inplace_str
 

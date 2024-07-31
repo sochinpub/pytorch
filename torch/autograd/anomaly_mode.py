@@ -4,6 +4,8 @@ import warnings
 
 import torch
 
+# 在自动求导时，检测错误产生路径
+
 __all__ = ["detect_anomaly", "set_detect_anomaly"]
 
 

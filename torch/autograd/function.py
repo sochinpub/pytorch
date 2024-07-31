@@ -14,6 +14,8 @@ import torch.utils.hooks as hooks
 from torch._C import _functions
 from torch._functorch.autograd_function import custom_function_call
 
+# 函数的反向传播
+
 __all__ = [
     "FunctionCtx",
     "BackwardCFunction",
@@ -434,6 +436,7 @@ class _SingleLevelFunction(
         )
 
     # vjp and backward are alias of each other
+    # vjp和反向传播backward互为 别名
     vjp = backward
 
     @staticmethod
@@ -460,7 +463,7 @@ class _SingleLevelFunction(
         )
 
 
-class Function(_SingleLevelFunction):
+class Function(_SingleLevelFunction): # 继承该类，可以实现自己的autograd function, 只需要实现forward和backward两个静态方法
     r"""Base class to create custom `autograd.Function`.
 
     To create a custom `autograd.Function`, subclass this class and implement

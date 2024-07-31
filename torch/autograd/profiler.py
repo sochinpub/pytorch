@@ -11,6 +11,8 @@ import torch.cuda
 from torch._C import _get_privateuse1_backend_name
 from torch._C._profiler import _ExperimentalConfig
 
+# 提供function 基本的统计信息
+
 from torch.autograd import (
     _disable_profiler,
     _enable_profiler,
