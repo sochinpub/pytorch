@@ -95,11 +95,12 @@ def _broadcast_coalesced_reshape(
     detach: bool = False,
 ) -> List[List[torch.Tensor]]:
     from ._functions import Broadcast
-
+    # 先看 else 的 comment，因为不 detach 也会用到同样的函数
     if detach:
         return comm.broadcast_coalesced(tensors, devices)
     else:
         # Use the autograd function to broadcast if not detach
+        # 下拉看源码
         if len(tensors) > 0:
             tensor_copies = Broadcast.apply(devices, *tensors)
             return [
@@ -126,14 +127,16 @@ def replicate(
 
     if not devices:
         return []
-
+    # 需要复制到哪些 GPU， 复制多少份
     devices = [_get_device_index(x, True) for x in devices]
     num_replicas = len(devices)
-
+    # 复制 parameters
     params = list(network.parameters())
     param_indices = {param: idx for idx, param in enumerate(params)}
+    # 拉到代码块底部看原函数，然后再回来
     param_copies = _broadcast_coalesced_reshape(params, devices, detach)
 
+    # 复制 buffers
     buffers = list(network.buffers())
     buffers_rg: List[torch.Tensor] = []
     buffers_not_rg: List[torch.Tensor] = []
@@ -142,7 +145,7 @@ def replicate(
             buffers_rg.append(buf)
         else:
             buffers_not_rg.append(buf)
-
+    # 记录需要和不需要求导的 buffer 的 index
     buffer_indices_rg = {buf: idx for idx, buf in enumerate(buffers_rg)}
     buffer_indices_not_rg = {buf: idx for idx, buf in enumerate(buffers_not_rg)}
 
@@ -150,7 +153,9 @@ def replicate(
     buffer_copies_not_rg = _broadcast_coalesced_reshape(
         buffers_not_rg, devices, detach=True
     )
-
+    # 现在开始拷贝网络
+    # 准备过程：将 network.modules() 变成list
+    # 然后再为之后复制的模型准备好空的 list 和 indices
     modules = list(network.modules())
     module_copies: List[List[Module]] = [[] for _ in devices]
     module_indices: Dict[Module, int] = {}
@@ -167,7 +172,7 @@ def replicate(
             replica._former_parameters = OrderedDict()
 
             module_copies[j].append(replica)
-
+    # 接下来分别复制 module，param，buffer
     for i, module in enumerate(modules):
         for key, child in module._modules.items():
             if child is None:

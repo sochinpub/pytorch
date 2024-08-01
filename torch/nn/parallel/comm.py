@@ -49,7 +49,7 @@ def broadcast(tensor, devices=None, *, out=None):
 
 def broadcast_coalesced(tensors, devices, buffer_size=10485760):
     """Broadcast a sequence of tensors to the specified GPUs.
-
+       调用C的集合通信，进行参数的broadcast
     Small tensors are first coalesced into a buffer to reduce the number of synchronizations.
 
     Args:
@@ -251,6 +251,7 @@ def gather(tensors, dim=0, destination=None, *, out=None):
                 stacklevel=2,
             )
         destination = _get_device_index(destination, allow_cpu=True, optional=True)
+        # 调用C实现的集合通信gather
         return torch._C._gather(tensors, dim, destination)
     else:
         if destination is not None:

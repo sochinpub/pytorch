@@ -2504,7 +2504,7 @@ class Module: # 神经网络模块的父类
                 yield name, v
 
     def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
-        r"""Return an iterator over module parameters.
+        r"""Return an iterator over module parameters. 返回当前Module的参数迭代器
 
         This is typically passed to an optimizer.
 

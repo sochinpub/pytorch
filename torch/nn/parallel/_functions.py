@@ -14,13 +14,23 @@ class Broadcast(Function):
         assert all(
             i.device.type != "cpu" for i in inputs
         ), "Broadcast function not implemented for CPU tensors"
+        # 获取 broadcast的GPU
+        # inputs是设备
         target_gpus = [_get_device_index(x, True) for x in target_gpus]
         ctx.target_gpus = target_gpus
         if len(inputs) == 0:
             return ()
         ctx.num_inputs = len(inputs)
+        # input 放在 device[0]
         ctx.input_device = inputs[0].get_device()
+        # 和 detach 的情况一样，调用集合通信的broadcast
         outputs = comm.broadcast_coalesced(inputs, ctx.target_gpus)
+        # comm.broadcast_coalesced 的代码
+        # tensors 必须在同一个设备，CPU 或者 GPU； devices 即是要拷贝到的设备；buffer_size 则是最大的buffer
+        # 这里用到 buffer 将小张量合并到缓冲区以减少同步次数
+        # def broadcast_coalesced(tensors, devices, buffer_size=10485760):
+        #    devices = [_get_device_index(d) for d in devices]
+        #       return torch._C._broadcast_coalesced(tensors, devices, buffer_size)
         non_differentiables = []
         for idx, input_requires_grad in enumerate(ctx.needs_input_grad[1:]):
             if not input_requires_grad:
@@ -93,17 +103,21 @@ class Gather(Function):
 class Scatter(Function):
     @staticmethod
     def forward(ctx, target_gpus, chunk_sizes, dim, input):
+        # 获取GPU索引
         target_gpus = [_get_device_index(x, True) for x in target_gpus]
         ctx.dim = dim
         ctx.input_device = input.get_device() if input.device.type != "cpu" else -1
         streams = None
         if torch.cuda.is_available() and ctx.input_device == -1:
             # Perform CPU to GPU copies in a background stream
+            # 在当前设备上，新建cuda stream
             streams = [
                 _get_stream(torch.device("cuda", device)) for device in target_gpus
             ]
+        # 真正的集合操作
         outputs = comm.scatter(input, target_gpus, chunk_sizes, ctx.dim, streams)
         # Synchronize with the copy stream
+        # sync一下各个设备（stream上）的异步拷贝：等待拷贝完成
         if streams is not None:
             for i, output in enumerate(outputs):
                 with torch.cuda.device(target_gpus[i]):
@@ -122,7 +136,9 @@ _streams: Optional[List[Optional[torch.Stream]]] = None
 
 
 def _get_stream(device: torch.device):
-    """Get a background stream for copying between CPU and target device."""
+    """Get a background stream for copying between CPU and target device.
+        创建一个cuda strem
+    """
     global _streams
     if device.type == "cpu":
         return None

@@ -50,13 +50,15 @@ def scatter(
 
 def scatter(inputs, target_gpus, dim=0):
     r"""Slice tensors into approximately equal chunks and distributes them across given GPUs.
-
+        切分tensors到相近的大小，分配给不同的GPU
+        如果不是tensors，则直接复制引用给不同的GPU
     Duplicates references to objects that are not tensors.
     """
 
     def scatter_map(obj):
-        if isinstance(obj, torch.Tensor):
+        if isinstance(obj, torch.Tensor): # 这届调用Scatter类的apply方法
             return Scatter.apply(target_gpus, None, dim, obj)
+        # 其他类型，进行引用复制
         if _is_namedtuple(obj):
             return [type(obj)(*args) for args in zip(*map(scatter_map, obj))]
         if isinstance(obj, tuple) and len(obj) > 0:
@@ -72,6 +74,7 @@ def scatter(inputs, target_gpus, dim=0):
     # to a closure that has a reference to the scatter_map cell (because the
     # fn is recursive). To avoid this reference cycle, we set the function to
     # None, clearing the cell
+    # 这里遗留的闭包，会导致循环引用
     try:
         res = scatter_map(inputs)
     finally:
@@ -86,8 +89,10 @@ def scatter_kwargs(
     dim: int = 0,
 ) -> Tuple[Tuple[Any, ...], Tuple[Dict[str, Any], ...]]:
     r"""Scatter with support for kwargs dictionary."""
+    # 主要函数
     scattered_inputs = scatter(inputs, target_gpus, dim) if inputs else []
     scattered_kwargs = scatter(kwargs, target_gpus, dim) if kwargs else []
+    # 用空项补全使 inputs 和 kwargs 长度相当
     if len(scattered_inputs) < len(scattered_kwargs):
         scattered_inputs.extend(
             () for _ in range(len(scattered_kwargs) - len(scattered_inputs))
@@ -96,12 +101,13 @@ def scatter_kwargs(
         scattered_kwargs.extend(
             {} for _ in range(len(scattered_inputs) - len(scattered_kwargs))
         )
+    # 返回 tuple
     return tuple(scattered_inputs), tuple(scattered_kwargs)
 
 
 def gather(outputs: Any, target_device: Union[int, torch.device], dim: int = 0) -> Any:
     r"""Gather tensors from different GPUs on a specified device.
-
+        从多个GPU设备收集tensors到某个特定的设备
     This function is useful for gathering the results of a distributed computation.
     It takes a sequence of objects, one for each GPU, and returns a single object
     on the specified device.
@@ -118,7 +124,7 @@ def gather(outputs: Any, target_device: Union[int, torch.device], dim: int = 0) 
 
     def gather_map(outputs):
         out = outputs[0]
-        if isinstance(out, torch.Tensor):
+        if isinstance(out, torch.Tensor): # Gather类的forward方法
             return Gather.apply(target_device, dim, *outputs)
         if out is None:
             return None

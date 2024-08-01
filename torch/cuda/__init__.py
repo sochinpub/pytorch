@@ -887,7 +887,7 @@ def _get_nvml_device_index(device: Optional[Union[int, Device]]) -> int:
 
 _cached_device_count: Optional[int] = None
 
-
+# cuda设备数目查询：torch.cuda.device_count
 def device_count() -> int:
     r"""Return the number of GPUs available."""
     global _cached_device_count

@@ -720,7 +720,7 @@ class ExceptionWrapper:
 
 
 def _get_available_device_type():
-    if torch.cuda.is_available():
+    if torch.cuda.is_available(): # cuda drver
         return "cuda"
     if hasattr(torch, "xpu") and torch.xpu.is_available():  # type: ignore[attr-defined]
         return "xpu"
@@ -735,6 +735,14 @@ def _get_available_device_type():
 
 
 def _get_device_attr(get_member):
+    """ 查询所有的设备数目
+
+    Args:
+        一个lambda函数：get_member (_type_): _description_
+        lambda函数的参数是一个模块，该模块必须实现device_count()函数
+    Returns:
+        _type_: 设备数目
+    """
     device_type = _get_available_device_type()
     if device_type and device_type.lower() == "cuda":
         return get_member(torch.cuda)
@@ -753,13 +761,15 @@ def _get_current_device_index():
     return _get_device_attr(lambda m: m.current_device())
 
 
-def _get_all_device_indices():
+def _get_all_device_indices(): # 探测所有的GPU
     # all device index
+    # torch.cuda.device_count()
     return _get_device_attr(lambda m: list(range(m.device_count())))
 
 
 def _get_devices_properties(device_ids):
     # all device properties
+    # 查询设备属性
     return [_get_device_attr(lambda m: m.get_device_properties(i)) for i in device_ids]
 
 

@@ -40,9 +40,10 @@ def _check_balance(device_ids: Sequence[Union[int, torch.device]]) -> None:
             )
             return True
         return False
-
+    # 检查显存的不均衡
     if warn_imbalance(lambda props: props.total_memory):
         return
+    # 检查核数的不均衡
     if warn_imbalance(lambda props: props.multi_processor_count):
         return
 
@@ -141,38 +142,44 @@ class DataParallel(Module, Generic[T]):
     ) -> None:
         super().__init__()
         torch._C._log_api_usage_once("torch.nn.parallel.DataParallel")
+        # 检查是否有可用的GPU
         device_type = _get_available_device_type()
         if device_type is None:
             self.module = module
             self.device_ids = []
             return
-
+        # 默认使用当前节点所有可见的GPU
         if device_ids is None:
             device_ids = _get_all_device_indices()
 
         if device_ids is None:
             raise RuntimeError("no available devices were found")
-
+        # 默认parameter server 是 device_ids 列表上第一个：device[0]
         if output_device is None:
             output_device = device_ids[0]
 
         self.dim = dim
         self.module = module
         self.device_ids = [_get_device_index(x, True) for x in device_ids]
+        # device[0] 作为输出设备
         self.output_device = _get_device_index(output_device, True)
         self.src_device_obj = torch.device(device_type, self.device_ids[0])
-
+        # 检查负载是否平衡， 不平衡（指内存或者处理器 max/min > 0.75 会有警告）
         if device_type == "cuda":
             _check_balance(self.device_ids)
-
+        # 如果单卡，直接拷贝到该设备上
         if len(self.device_ids) == 1:
             self.module.to(self.src_device_obj)
 
     def forward(self, *inputs: Any, **kwargs: Any) -> Any:
         with torch.autograd.profiler.record_function("DataParallel.forward"):
+            # 如果没有GPU可用，直接在CPU上运行
             if not self.device_ids:
                 return self.module(*inputs, **kwargs)
-
+            # 运行前 GPU device_ids[0] （即我们的 server ）上必须有 parallelized module 的parameters 和 buffers
+            # 因为 DP 保证 GPU device_ids[0] 和 base parallelized module 共享存储
+            # 所以在device[0] 上的 in-place 更新也会被保留下来，其他的则不会
+            # 迭代，每一个参数和buffer，检查其是否在device[0]上
             for t in chain(self.module.parameters(), self.module.buffers()):
                 if t.device != self.src_device_obj:
                     raise RuntimeError(
@@ -180,14 +187,16 @@ class DataParallel(Module, Generic[T]):
                         f"on device {self.src_device_obj} (device_ids[0]) but found one of "
                         f"them on device: {t.device}"
                     )
-
+            # nice 现在 device[0] 上已经有了 module 和 input， 接下来我们就要开始 PS 算法了
+            # 可以开始看正文了
             inputs, module_kwargs = self.scatter(inputs, kwargs, self.device_ids)
             # for forward function without any inputs, empty list and dict will be created
             # so the module can be executed on one device which is the first one in device_ids
+            # 如果前向计算没有任何参数输入，则返回空的元组和字典
             if not inputs and not module_kwargs:
                 inputs = ((),)
                 module_kwargs = ({},)
-
+            # 如果仅有单卡可用，直接单卡计算，不用并行
             if len(self.device_ids) == 1:
                 return self.module(*inputs[0], **module_kwargs[0])
             replicas = self.replicate(self.module, self.device_ids[: len(inputs)])
@@ -205,11 +214,13 @@ class DataParallel(Module, Generic[T]):
         kwargs: Optional[Dict[str, Any]],
         device_ids: Sequence[Union[int, torch.device]],
     ) -> Any:
+        # 分发数据给各个设备
         return scatter_kwargs(inputs, kwargs, device_ids, dim=self.dim)
 
     def parallel_apply(
         self, replicas: Sequence[T], inputs: Sequence[Any], kwargs: Any
     ) -> List[Any]:
+        # 并行执行
         return parallel_apply(
             replicas, inputs, kwargs, self.device_ids[: len(replicas)]
         )
