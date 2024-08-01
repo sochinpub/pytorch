@@ -283,7 +283,7 @@ def _verify_param_shape_across_processes(
     process_group: dist.ProcessGroup,
     tensors: List[torch.Tensor],
     logger: Optional["dist.Logger"] = None,
-):
+): # 多进程的参数shape相同
     return dist._verify_params_across_processes(process_group, tensors, logger)
 
 

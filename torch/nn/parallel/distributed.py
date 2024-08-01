@@ -646,6 +646,7 @@ class DistributedDataParallel(Module, Joinable):
         super().__init__()
         Joinable.__init__(self)
         self.logger: Optional[dist.Logger] = None
+        # 互斥、互存参数检查
         if bool(delay_all_reduce_named_params is not None) != bool(
             param_to_hook_all_reduce is not None
         ):
@@ -682,7 +683,7 @@ class DistributedDataParallel(Module, Joinable):
                 )
 
                 _pre_dp_module_transform(module)
-
+        # delay参数
         self._delay_all_reduce_params = []
         if hasattr(module, "_ddp_params_and_buffers_to_ignore"):
             self.parameters_to_ignore = set(module._ddp_params_and_buffers_to_ignore)
@@ -692,12 +693,13 @@ class DistributedDataParallel(Module, Joinable):
             for name, param in delay_all_reduce_named_params:
                 self.parameters_to_ignore.add(name)
                 self._delay_all_reduce_params.append(param)
-
+        # 模型参数列表
         self._module_parameters = [
             p
             for n, p in module.named_parameters()
-            if n not in self.parameters_to_ignore
+            if n not in self.parameters_to_ignore # 需要忽略的参数
         ]
+        # 存在不需要梯度的参数
         if not any(p.requires_grad for p in self._module_parameters):
             if len(self._delay_all_reduce_params):
                 logger.info("Delay the AllReduce of all parameters.")
@@ -707,13 +709,13 @@ class DistributedDataParallel(Module, Joinable):
                     "DistributedDataParallel is not needed when a module "
                     "doesn't have any parameter that requires a gradient.",
                 )
-
+        # 这里为什么只能包含1个或者为空
         if device_ids is not None and len(device_ids) > 1:
             self._log_and_throw(
                 ValueError,
                 "device_ids can only be None or contain a single element.",
             )
-
+        # 设备类型检查
         self.is_multi_device_module = (
             len({p.device for p in self._module_parameters}) > 1
         )
@@ -787,9 +789,11 @@ class DistributedDataParallel(Module, Joinable):
                     "Run a dummy forward pass to correctly initialize the modules",
                 )
         # used for intra-node param sync and inter-node sync as well
+        # 节点内外都可以用来做数据同步的桶
         self.broadcast_bucket_size = int(250 * 1024 * 1024)
 
         # reduction bucket size
+        # 桶的默认容量25MB
         if bucket_cap_mb is None:
             # default case (bucket cap is 25 MiB)
             bucket_cap_mb = 25
@@ -799,11 +803,13 @@ class DistributedDataParallel(Module, Joinable):
         self.bucket_bytes_cap = int(bucket_cap_mb * 1024 * 1024)
 
         # Whether to perform input tensor CPU to GPU copies on a side-stream
+        # 额外用一个stream， 来执行CPU到GPU拷贝到GPU
         self.use_side_stream_for_tensor_copies = (
             os.environ.get("PYTORCH_DDP_USE_SIDE_STREAM", "1") == "1"
         )
 
         # Initialize gradient buffers and register all reduce hook
+        # 初始化梯度缓冲区，注册reduce hook 函数
         self._delay_grad_buffer: Optional[torch.Tensor] = None
         self._delay_grad_views: List[torch.Tensor] = []
         self._delay_all_reduce_all_params = False
@@ -832,7 +838,7 @@ class DistributedDataParallel(Module, Joinable):
         # In debug mode, build a mapping of parameter index -> parameter.
         param_to_name_mapping = self._build_debug_param_to_name_mapping(parameters)
 
-        # Builds reducer.
+        # Builds reducer. 创建 reducer 
         self._ddp_init_helper(
             parameters,
             expect_sparse_gradient,
@@ -840,7 +846,7 @@ class DistributedDataParallel(Module, Joinable):
             static_graph,
         )
         self._comm_hooks: List[Tuple[Callable, object]] = []
-
+        # 混合精度支持
         if self.mixed_precision is not None:
             _setup_mixed_precision_params(self.mixed_precision, self.module)
             _cast_buffers(self.mixed_precision, self.module)
@@ -884,7 +890,7 @@ class DistributedDataParallel(Module, Joinable):
             )
 
         self._has_rebuilt_buckets = False
-
+        # 静态图支持
         if static_graph:
             self._set_static_graph()
 
@@ -911,10 +917,12 @@ class DistributedDataParallel(Module, Joinable):
         self._force_to_disable_cpp_reducer = (
             optimize_ddp == "python_reducer_without_compiled_forward"
         )
+        # 注册累计梯度的hook
         if self._use_python_reducer:
             self._register_accum_grad_hook()
 
         # Whether or not DDPSink performs a clone.
+        # 什么是DDPSink ???
         self._ddp_sink_clone = True
 
     def _register_accum_grad_hook(self):
@@ -1138,10 +1146,12 @@ class DistributedDataParallel(Module, Joinable):
 
         Initialization helper function that does the following:
         (1) bucketing the parameters for reductions
+        （把 parameter 分组，梯度通讯时，先得到梯度的会先通讯）
         (2) resetting the bucketing states
         (3) registering the grad hooks
+        （创建管理器）
         (4) Logging construction-time DDP logging data
-        (5) passing a handle of DDP to SyncBatchNorm Layer
+        (5) passing a handle of DDP to SyncBatchNorm Layer （为 SyncBN 准备）
         """
         # Notice, the parameters order is not in the order in which they are used,
         # especially in models with control flow.
@@ -1190,6 +1200,7 @@ class DistributedDataParallel(Module, Joinable):
         # Note: reverse list of buckets because we want to approximate the
         # order in which their gradients are produced, and assume they
         # are used in the forward pass in the order they are defined.
+        # 管理器
         self.reducer = dist.Reducer(
             parameters,
             list(reversed(bucket_indices)),
