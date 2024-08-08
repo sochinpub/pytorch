@@ -50,7 +50,7 @@ class CMake:
         return os.path.join(self.build_dir, "CMakeCache.txt")
 
     @staticmethod
-    def _get_cmake_command() -> str:
+    def _get_cmake_command() -> str: # cmake的命令
         "Returns cmake command."
 
         cmake_command = "cmake"
@@ -78,7 +78,7 @@ class CMake:
         return cmake_command
 
     @staticmethod
-    def _get_version(cmd: str | None) -> Any:
+    def _get_version(cmd: str | None) -> Any: # 获取cmake 版本
         "Returns cmake version."
 
         if cmd is None:
@@ -113,7 +113,7 @@ class CMake:
         Returns:
           dict: A ``dict`` containing the value of cached CMake variables.
         """
-        with open(self._cmake_cache_file) as f:
+        with open(self._cmake_cache_file) as f:                     # cmake缓存文件
             return get_cmake_cache_variables_from_file(f)
 
     def generate(

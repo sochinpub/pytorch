@@ -210,10 +210,11 @@ if sys.platform == "win32" and sys.maxsize.bit_length() == 31:
 
 import platform
 
-
+# 编译控制， 只编译libtorch wheel包
 BUILD_LIBTORCH_WHL = os.getenv("BUILD_LIBTORCH_WHL", "0") == "1"
+# 编译控制，
 BUILD_PYTHON_ONLY = os.getenv("BUILD_PYTHON_ONLY", "0") == "1"
-
+# python3 > 3.8.0
 python_min_version = (3, 8, 0)
 python_min_version_str = ".".join(map(str, python_min_version))
 if sys.version_info < python_min_version:
@@ -265,7 +266,7 @@ if BUILD_LIBTORCH_WHL:
     # functorch is not supported without python
     os.environ["BUILD_FUNCTORCH"] = "OFF"
 
-
+# 查找 torch 包路径
 if BUILD_PYTHON_ONLY:
     os.environ["BUILD_LIBTORCHLESS"] = "ON"
     os.environ["LIBTORCH_LIB_PATH"] = f"{_get_package_path('torch')}/lib"
@@ -318,10 +319,10 @@ else:
     setuptools.distutils.log.warn = report
 
 # Constant known variables used throughout this file
-cwd = os.path.dirname(os.path.abspath(__file__))
-lib_path = os.path.join(cwd, "torch", "lib")
+cwd = os.path.dirname(os.path.abspath(__file__))    # 当前目录
+lib_path = os.path.join(cwd, "torch", "lib")        # lib的目录 torch/lib
 third_party_path = os.path.join(cwd, "third_party")
-caffe2_build_dir = os.path.join(cwd, "build")
+caffe2_build_dir = os.path.join(cwd, "build")           # caffe2 编译目录 build
 
 # CMAKE: full path to python library
 if IS_WINDOWS:
@@ -344,8 +345,8 @@ cmake_python_include_dir = sysconfig.get_path("include")
 # Version, create_version_file, and package_name
 ################################################################################
 
-package_name = os.getenv("TORCH_PACKAGE_NAME", "torch")
-LIBTORCH_PKG_NAME = os.getenv("LIBTORCH_PACKAGE_NAME", "torch_no_python")
+package_name = os.getenv("TORCH_PACKAGE_NAME", "torch")                                     # 默认包名
+LIBTORCH_PKG_NAME = os.getenv("LIBTORCH_PACKAGE_NAME", "torch_no_python")                   # libtorch的包名
 if BUILD_LIBTORCH_WHL:
     package_name = LIBTORCH_PKG_NAME
 
@@ -357,7 +358,7 @@ report(f"Building wheel {package_name}-{version}")
 cmake = CMake()
 
 
-def get_submodule_folders():
+def get_submodule_folders(): # submodule的父目录
     git_modules_path = os.path.join(cwd, ".gitmodules")
     default_modules_path = [
         os.path.join(third_party_path, name)
@@ -375,14 +376,19 @@ def get_submodule_folders():
         return default_modules_path
     with open(git_modules_path) as f:
         return [
-            os.path.join(cwd, line.split("=", 1)[1].strip())
+            os.path.join(cwd, line.split("=", 1)[1].strip())            # third_party/cpp-httplib
             for line in f
-            if line.strip().startswith("path")
+            if line.strip().startswith("path")                          # path开头的
         ]
+    """[submodule "third_party/cpp-httplib"]
+        path = third_party/cpp-httplib
+        url = https://github.com/yhirose/cpp-httplib.git
+        branch = v0.15.3
+    """
 
 
 def check_submodules():
-    def check_for_files(folder, files):
+    def check_for_files(folder, files):                                         # 检查子目录的某个文件是否存在
         if not any(os.path.exists(os.path.join(folder, f)) for f in files):
             report("Could not find any of {} in {}".format(", ".join(files), folder))
             report("Did you run 'git submodule update --init --recursive'?")
@@ -395,14 +401,14 @@ def check_submodules():
 
     if bool(os.getenv("USE_SYSTEM_LIBS", False)):
         return
-    folders = get_submodule_folders()
+    folders = get_submodule_folders()                                           # 子模块的目录列表
     # If none of the submodule folders exists, try to initialize them
     if all(not_exists_or_empty(folder) for folder in folders):
         try:
             print(" --- Trying to initialize submodules")
             start = time.time()
             subprocess.check_call(
-                ["git", "submodule", "update", "--init", "--recursive"], cwd=cwd
+                ["git", "submodule", "update", "--init", "--recursive"], cwd=cwd        # 自动执行 git submodule update --init --recursive
             )
             end = time.time()
             print(f" --- Submodule initialization took {end - start:.2f} sec")
@@ -466,12 +472,13 @@ def mirror_files_into_torchgen():
 
 
 # all the work we need to do _before_ setup runs
-def build_deps():
-    report("-- Building version " + version)
+def build_deps():   # setup 运行前
+    report("-- Building version " + version)    # 打印编译版本
 
-    check_submodules()
-    check_pydep("yaml", "pyyaml")
+    check_submodules()                          # 检查子模块
+    check_pydep("yaml", "pyyaml")               # 检查 yaml 依赖
     build_python = not BUILD_LIBTORCH_WHL
+    # 编译caffe2
     build_caffe2(
         version=version,
         cmake_python_library=cmake_python_library,
@@ -480,7 +487,7 @@ def build_deps():
         cmake_only=CMAKE_ONLY,
         cmake=cmake,
     )
-
+    # 只编译caffe2
     if CMAKE_ONLY:
         report(
             'Finished running cmake. Run "ccmake build" or '
@@ -491,6 +498,7 @@ def build_deps():
 
     # Use copies instead of symbolic files.
     # Windows has very poor support for them.
+    # 软连接建立
     sym_files = [
         "tools/shared/_utils_internal.py",
         "torch/utils/benchmark/utils/valgrind_wrapper/callgrind.h",
@@ -507,13 +515,13 @@ def build_deps():
             if filecmp.cmp(sym_file, orig_file):
                 same = True
             else:
-                os.remove(sym_file)
+                os.remove(sym_file)                         # 移除符号链接文件
         if not same:
-            shutil.copyfile(orig_file, sym_file)
+            shutil.copyfile(orig_file, sym_file)            # 执行文件拷贝
 
 
 ################################################################################
-# Building dependent libraries
+# Building dependent libraries 编译依赖库
 ################################################################################
 
 missing_pydep = """
@@ -522,7 +530,7 @@ Please install it via `conda install {module}` or `pip install {module}`
 """.strip()
 
 
-def check_pydep(importname, module):
+def check_pydep(importname, module):    # 检查依赖
     try:
         importlib.import_module(importname)
     except ImportError as e:
@@ -532,10 +540,15 @@ def check_pydep(importname, module):
 
 
 class build_ext(setuptools.command.build_ext.build_ext):
+    """ 编译扩展
+
+    Args:
+        setuptools (_type_): _description_
+    """
     def _embed_libomp(self):
         # Copy libiomp5.dylib/libomp.dylib inside the wheel package on MacOS
-        lib_dir = os.path.join(self.build_lib, "torch", "lib")
-        libtorch_cpu_path = os.path.join(lib_dir, "libtorch_cpu.dylib")
+        lib_dir = os.path.join(self.build_lib, "torch", "lib")                      # 编译某个lib
+        libtorch_cpu_path = os.path.join(lib_dir, "libtorch_cpu.dylib")             # libtorch_cpu
         if not os.path.exists(libtorch_cpu_path):
             return
         # Parse libtorch_cpu load commands
@@ -784,14 +797,14 @@ class build_ext(setuptools.command.build_ext.build_ext):
         report(f"setup.py::get_outputs returning {outputs}")
         return outputs
 
-    def create_compile_commands(self):
+    def create_compile_commands(self): # 编译命令
         def load(filename):
             with open(filename) as f:
                 return json.load(f)
 
         ninja_files = glob.glob("build/*compile_commands.json")
         cmake_files = glob.glob("torch/lib/build/*/compile_commands.json")
-        all_commands = [entry for f in ninja_files + cmake_files for entry in load(f)]
+        all_commands = [entry for f in ninja_files + cmake_files for entry in load(f)]  # 加载编译命令
 
         # cquery does not like c++ compiles that start with gcc.
         # It forgets to include the c++ header directories.
@@ -799,7 +812,7 @@ class build_ext(setuptools.command.build_ext.build_ext):
         # setup.py generates with g++ calls instead
         for command in all_commands:
             if command["command"].startswith("gcc "):
-                command["command"] = "g++ " + command["command"][4:]
+                command["command"] = "g++ " + command["command"][4:]    # 替换成g++编译
 
         new_contents = json.dumps(all_commands, indent=2)
         contents = ""
@@ -813,7 +826,7 @@ class build_ext(setuptools.command.build_ext.build_ext):
 
 class concat_license_files:
     """Merge LICENSE and LICENSES_BUNDLED.txt as a context manager
-
+        上下文管理器
     LICENSE is the main PyTorch license, LICENSES_BUNDLED.txt is auto-generated
     from all the licenses found in ./third_party/. We concatenate them so there
     is a single license file in the sdist and wheels with all of the necessary
@@ -846,7 +859,7 @@ class concat_license_files:
 
     def __exit__(self, exception_type, exception_value, traceback):
         """Restore content of f1"""
-        with open(self.f1, "w") as f:
+        with open(self.f1, "w") as f: # 写到bsd license 文件中
             f.write(self.bsd_text)
 
 
@@ -859,7 +872,7 @@ except ImportError:
     wheel_concatenate = None
 else:
     # Need to create the proper LICENSE.txt for the wheel
-    class wheel_concatenate(bdist_wheel):
+    class wheel_concatenate(bdist_wheel):   # 创建 wheel 包
         """check submodules on sdist to prevent incomplete tarballs"""
 
         def run(self):
@@ -901,10 +914,10 @@ class clean(setuptools.Command):
         import glob
         import re
 
-        with open(".gitignore") as f:
+        with open(".gitignore") as f:   # 应该被忽略，不该被删除的文件
             ignores = f.read()
             pat = re.compile(r"^#( BEGIN NOT-CLEAN-FILES )?")
-            for wildcard in filter(None, ignores.split("\n")):
+            for wildcard in filter(None, ignores.split("\n")): # func = None，返回
                 match = pat.match(wildcard)
                 if match:
                     if match.group(1):
@@ -913,7 +926,7 @@ class clean(setuptools.Command):
                     # Ignore lines which begin with '#'.
                 else:
                     # Don't remove absolute paths from the system
-                    wildcard = wildcard.lstrip("./")
+                    wildcard = wildcard.lstrip("./") # 移除./开头的符号
 
                     for filename in glob.glob(wildcard):
                         try:
@@ -1131,11 +1144,12 @@ def print_box(msg):
 
 
 def main():
+    # 参数互斥检查
     if BUILD_LIBTORCH_WHL and BUILD_PYTHON_ONLY:
         raise RuntimeError(
             "Conflict: 'BUILD_LIBTORCH_WHL' and 'BUILD_PYTHON_ONLY' can't both be 1. Set one to 0 and rerun."
         )
-    install_requires = [
+    install_requires = [ # 安装的需要
         "filelock",
         "typing-extensions>=4.8.0",
         "sympy",
@@ -1144,17 +1158,17 @@ def main():
         "fsspec",
     ]
 
-    if sys.version_info >= (3, 12, 0):
+    if sys.version_info >= (3, 12, 0): # setuptools版本检查
         install_requires.append("setuptools")
 
     if BUILD_PYTHON_ONLY:
-        install_requires.append(f"{LIBTORCH_PKG_NAME}=={get_torch_version()}")
+        install_requires.append(f"{LIBTORCH_PKG_NAME}=={get_torch_version()}") # libtorch的版本需要
 
     use_prioritized_text = str(os.getenv("USE_PRIORITIZED_TEXT_FOR_LD", ""))
     if (
         use_prioritized_text == ""
         and platform.system() == "Linux"
-        and platform.processor() == "aarch64"
+        and platform.processor() == "aarch64" # 通常是x86_64, 这里检查arm处理器
     ):
         print_box(
             """
@@ -1164,7 +1178,7 @@ def main():
         )
     if use_prioritized_text == "1" or use_prioritized_text == "True":
         gen_linker_script(
-            filein="cmake/prioritized_text.txt", fout="cmake/linker_script.ld"
+            filein="cmake/prioritized_text.txt", fout="cmake/linker_script.ld" # 这是什么 ???
         )
         linker_script_path = os.path.abspath("cmake/linker_script.ld")
         os.environ["LDFLAGS"] = os.getenv("LDFLAGS", "") + f" -T{linker_script_path}"
@@ -1179,15 +1193,15 @@ def main():
     # building deps and setup. We need to set values so `--help` works.
     dist = Distribution()
     dist.script_name = os.path.basename(sys.argv[0])
-    dist.script_args = sys.argv[1:]
+    dist.script_args = sys.argv[1:] # 后面的参数
     try:
         dist.parse_command_line()
     except setuptools.distutils.errors.DistutilsArgError as e:
         print(e)
         sys.exit(1)
 
-    mirror_files_into_torchgen()
-    if RUN_BUILD_DEPS:
+    mirror_files_into_torchgen() # Windows下文件拷贝
+    if RUN_BUILD_DEPS:      # 编译依赖
         build_deps()
 
     (
@@ -1209,7 +1223,7 @@ def main():
         long_description = f.read()
 
     version_range_max = max(sys.version_info[1], 12) + 1
-    torch_package_data = [
+    torch_package_data = [ # libtorch 包的打包文件列表
         "py.typed",
         "bin/*",
         "test/*",
@@ -1391,7 +1405,7 @@ def main():
         "utils/model_dump/*.mjs",
     ]
 
-    if not BUILD_LIBTORCH_WHL:
+    if not BUILD_LIBTORCH_WHL: # 非wheel包， 打包几个动态链接库
         torch_package_data.extend(
             [
                 "lib/libtorch_python.so",
@@ -1399,7 +1413,7 @@ def main():
                 "lib/libtorch_python.dll",
             ]
         )
-    if not BUILD_PYTHON_ONLY:
+    if not BUILD_PYTHON_ONLY: # 非python only， 打包静态库+动态库
         torch_package_data.extend(
             [
                 "lib/*.so*",
@@ -1408,7 +1422,7 @@ def main():
                 "lib/*.lib",
             ]
         )
-    if get_cmake_cache_vars()["BUILD_CAFFE2"]:
+    if get_cmake_cache_vars()["BUILD_CAFFE2"]: # 打包caffe2
         torch_package_data.extend(
             [
                 "include/caffe2/**/*.h",
@@ -1416,7 +1430,7 @@ def main():
                 "include/caffe2/utils/**/*.h",
             ]
         )
-    if get_cmake_cache_vars()["USE_TENSORPIPE"]:
+    if get_cmake_cache_vars()["USE_TENSORPIPE"]: # 打包tesnsorpipe
         torch_package_data.extend(
             [
                 "include/tensorpipe/*.h",
@@ -1433,7 +1447,7 @@ def main():
                 "include/tensorpipe/transport/uv/*.h",
             ]
         )
-    if get_cmake_cache_vars()["USE_KINETO"]:
+    if get_cmake_cache_vars()["USE_KINETO"]: # 打包kineto
         torch_package_data.extend(
             [
                 "include/kineto/*.h",

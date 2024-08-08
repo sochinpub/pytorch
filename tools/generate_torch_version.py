@@ -13,11 +13,11 @@ UNKNOWN = "Unknown"
 RELEASE_PATTERN = re.compile(r"/v[0-9]+(\.[0-9]+)*(-rc[0-9]+)?/")
 
 
-def get_sha(pytorch_root: str | Path) -> str:
+def get_sha(pytorch_root: str | Path) -> str:   # sha
     try:
         rev = None
-        if os.path.exists(os.path.join(pytorch_root, ".git")):
-            rev = subprocess.check_output(
+        if os.path.exists(os.path.join(pytorch_root, ".git")): # .git目录下查找
+            rev = subprocess.check_output(                              # 执行 git rev-parse HEAD 拿到commit
                 ["git", "rev-parse", "HEAD"], cwd=pytorch_root
             )
         elif os.path.exists(os.path.join(pytorch_root, ".hg")):
@@ -49,7 +49,7 @@ def get_tag(pytorch_root: str | Path) -> str:
 
 def get_torch_version(sha: str | None = None) -> str:
     pytorch_root = Path(__file__).absolute().parent.parent
-    version = open(pytorch_root / "version.txt").read().strip()
+    version = open(pytorch_root / "version.txt").read().strip()     # 前缀使用version.txt中的字符串
 
     if os.getenv("PYTORCH_BUILD_VERSION"):
         assert os.getenv("PYTORCH_BUILD_NUMBER") is not None
@@ -60,7 +60,7 @@ def get_torch_version(sha: str | None = None) -> str:
     elif sha != UNKNOWN:
         if sha is None:
             sha = get_sha(pytorch_root)
-        version += "+git" + sha[:7]
+        version += "+git" + sha[:7]         # 2.5.0a0+git@${commit的前7个字符}
     return version
 
 

@@ -9,11 +9,12 @@ import re
 from typing import IO, Optional, Union
 
 
-CMakeValue = Optional[Union[bool, str]]
+CMakeValue = Optional[Union[bool, str]] # 定义cmake的值为可选参数：可以是bool，也可以str
 
 
 def convert_cmake_value_to_python_value(
-    cmake_value: str, cmake_type: str
+    cmake_value: str,                   # 值
+    cmake_type: str                     # 类型
 ) -> CMakeValue:
     r"""Convert a CMake value in a string form to a Python value.
 
@@ -27,13 +28,13 @@ def convert_cmake_value_to_python_value(
 
     cmake_type = cmake_type.upper()
     up_val = cmake_value.upper()
-    if cmake_type == "BOOL":
+    if cmake_type == "BOOL":                    # bool 类型
         # https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/VariablesListsStrings#boolean-values-in-cmake
         return not (
             up_val in ("FALSE", "OFF", "N", "NO", "0", "", "NOTFOUND")
             or up_val.endswith("-NOTFOUND")
         )
-    elif cmake_type == "FILEPATH":
+    elif cmake_type == "FILEPATH":              # 字符串类型
         if up_val.endswith("-NOTFOUND"):
             return None
         else:
@@ -48,7 +49,7 @@ def get_cmake_cache_variables_from_file(
     r"""Gets values in CMakeCache.txt into a dictionary.
 
     Args:
-      cmake_cache_file: A CMakeCache.txt file object.
+      cmake_cache_file: A CMakeCache.txt file object. CMakeCache.txt文件对象
     Returns:
       dict: A ``dict`` containing the value of cached CMake variables.
     """

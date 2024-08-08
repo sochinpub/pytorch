@@ -5,9 +5,9 @@ def gen_linker_script(
     filein: str = "cmake/prioritized_text.txt", fout: str = "cmake/linker_script.ld"
 ) -> None:
     with open(filein) as f:
-        prioritized_text = f.readlines()
+        prioritized_text = f.readlines()   # 读取
         prioritized_text = [
-            line.replace("\n", "") for line in prioritized_text if line != "\n"
+            line.replace("\n", "") for line in prioritized_text if line != "\n" # 移除换行符
         ]
 
     linker_script_lines = subprocess.check_output(["ld", "-verbose"], text=True).split(
