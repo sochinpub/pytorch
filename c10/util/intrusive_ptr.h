@@ -32,11 +32,12 @@ constexpr uint32_t kImpracticallyHugeReferenceCount = 0x0FFFFFFF;
 
 /**
  * intrusive_ptr<T> is an alternative to shared_ptr<T> that has better
- * performance because it does the refcounting intrusively
+ * performance because it does the refcounting intrusively 比shared_ptr性能跟高， 因为使用了侵入式的refcount计数
  * (i.e. in a member of the object itself).
  * Your class T needs to inherit from intrusive_ptr_target to allow it to be
  * used in an intrusive_ptr<T>. Your class's constructor should not allow
  *`this` to escape to other threads or create an intrusive_ptr from `this`.
+ * 子类需要继承自intrusive_ptr_target才能使用当前类
  */
 
 // Note [Stack allocated intrusive_ptr_target safety]
@@ -48,7 +49,8 @@ constexpr uint32_t kImpracticallyHugeReferenceCount = 0x0FFFFFFF;
 // because we set the refcount/weakcount of objects which inherit from
 // intrusive_ptr_target to zero, *unless* we can prove that the object
 // was dynamically allocated (e.g., via make_intrusive).
-//
+// std::enable_shared_from_this 容易有bug, 允许栈上分配对象的共享
+// intrusive_ptr 通过设置对象的refcount=0, 避免bug
 // Thus, whenever you transmute a T* into a intrusive_ptr<T>, we check
 // and make sure that the refcount isn't zero (or, a more subtle
 // test for weak_intrusive_ptr<T>, for which the refcount may validly
@@ -62,21 +64,21 @@ class C10_API intrusive_ptr_target {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Here's the scheme:
   //
-  //  - refcount == number of strong references to the object
-  //    weakcount == number of weak references to the object,
-  //      plus one more if refcount > 0
+  //  - refcount == number of strong references to the object   对象的强引用
+  //    weakcount == number of weak references to the object,   对象的弱引用
+  //      plus one more if refcount > 0                             1）如果refcount > 0, weakcount = refcount +1
   //    An invariant: refcount > 0  =>  weakcount > 0
   //
   //  - c10::StorageImpl stays live as long as there are any strong
   //    or weak pointers to it (weakcount > 0, since strong
   //    references count as a +1 to weakcount)
   //
-  //  - finalizers are called and data_ptr is deallocated when refcount == 0
+  //  - finalizers are called and data_ptr is deallocated when refcount == 0 refcount ==0, 则调用销毁
   //
   //  - Once refcount == 0, it can never again be > 0 (the transition
   //    from > 0 to == 0 is monotonic)
   //
-  //  - When you access c10::StorageImpl via a weak pointer, you must
+  //  - When you access c10::StorageImpl via a weak pointer, you must 通过弱符号指针访问， 必须自动增加use count
   //    atomically increment the use count, if it is greater than 0.
   //    If it is not, you must report that the storage is dead.
   //
@@ -98,7 +100,7 @@ class C10_API intrusive_ptr_target {
  protected:
   // protected destructor. We never want to destruct intrusive_ptr_target*
   // directly.
-  virtual ~intrusive_ptr_target() {
+  virtual ~intrusive_ptr_target() { // 析构函数非public, 当前对象不能直接销毁
 // Disable -Wterminate and -Wexceptions so we're allowed to use assertions
 // (i.e. throw exceptions) in a destructor.
 // We also have to disable -Wunknown-warning-option and -Wpragmas, because

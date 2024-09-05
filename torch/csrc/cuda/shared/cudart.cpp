@@ -19,7 +19,7 @@ hipError_t hipReturnSuccess() {
 }
 } // namespace
 #endif
-
+// cuda RT绑定到 _C 模块
 void initCudartBindings(PyObject* module) {
   auto m = py::handle(module).cast<py::module>();
 

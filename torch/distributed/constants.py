@@ -5,7 +5,7 @@ from torch._C._distributed_c10d import _DEFAULT_PG_TIMEOUT
 
 
 __all__ = ["default_pg_timeout", "default_pg_nccl_timeout"]
-
+# 全局的默认进程组，超时时间
 # Default process group wide timeout, if applicable.
 # This only applies to the non-nccl backends
 # To make an attempt at backwards compatibility with THD, we use an

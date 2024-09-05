@@ -17,7 +17,7 @@ std::vector<at::Tensor> getTensorShapes(
   }
   return shapeTensors;
 }
-
+// 数量
 size_t getTensorsNumel(const std::vector<at::Tensor>& tensors) {
   size_t numel = 0;
   for (auto& tensor : tensors) {

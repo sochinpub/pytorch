@@ -55,7 +55,10 @@
 #include <torch/csrc/utils/pybind.h>
 
 #include <torch/custom_class.h>
-
+/**
+ * 
+ * C10d转python的入口
+ */
 namespace {
 
 #ifdef USE_C10D_NCCL
@@ -2081,7 +2084,7 @@ communication mechanism.
               py::arg("device_type"),
               py::call_guard<py::gil_scoped_release>())
           .def(
-              "_register_backend",
+              "_register_backend",      // 通过python来注册Backend
               [](const c10::intrusive_ptr<::c10d::ProcessGroup>& self,
                  const c10::Device& device,
                  const ::c10d::ProcessGroup::BackendType& backendType,
@@ -3309,6 +3312,7 @@ such as `dist.all_reduce(tensor, async_op=True)`.
 } // namespace
 
 // c10d methods on torch._C
+// c10d的暴露给pybind的方法
 static PyMethodDef methods[] = { // NOLINT
     {"_c10d_init", c10d_init, METH_NOARGS, nullptr},
     {nullptr, nullptr, 0, nullptr}};

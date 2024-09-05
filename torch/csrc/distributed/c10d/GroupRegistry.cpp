@@ -2,11 +2,12 @@
 
 #include <torch/csrc/distributed/c10d/RankLocal.hpp>
 
-namespace {
+namespace { //匿名
 
 // Each rank operates on a different `c10d::ProcessGroup` instance for the same
 // logical process group. Use `RankLocal<GroupRegistry>::get()` to ensure each
 // rank gets a unique registry.
+// 每个rank在相同逻辑进程组上操作不同的c10d::ProcessGroup实例
 class GroupRegistry {
  public:
   void register_group(
@@ -58,7 +59,7 @@ class GroupRegistry {
 namespace c10d {
 
 static bool thread_isolation_mode = false;
-static GroupRegistry process_registry;
+static GroupRegistry process_registry;        // 进程内全局
 
 void set_thread_isolation_mode(bool enable) {
   thread_isolation_mode = enable;

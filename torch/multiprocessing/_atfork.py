@@ -18,7 +18,7 @@ else:
     def _register(func):
         os.register_at_fork(after_in_child=func)
 
-
+# fork进程时需要执行的动作
 def register_after_fork(func):
     """Register a callable to be executed in the child process after a fork.
 

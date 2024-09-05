@@ -25,10 +25,10 @@ namespace c10d {
 
 // ProcessGroup is a base class that captures collective and point to
 // point communication in a fixed set of processes.
-//
+// 集合通信，P2P通信的积累
 // The functions specified in the class below describe the API alone;
 // implementations are provided in subclasses.
-//
+// 当前基类只定义子类需要实现的API
 // Every function that performs I/O is executed asynchronously by a
 // thread pool owned by the ProcessGroup (by default). They return an
 // object that can be used to wait for completion or error.
@@ -42,13 +42,14 @@ namespace c10d {
 // and initialization must start from scratch. For members of the
 // process group to find each other (referred to as rendezvous from
 // hereon)
-//
+// 进程组
 class TORCH_API ProcessGroup : public torch::CustomClassHolder {
  public:
   // ProcessGroup Options is a base struct that defines the basic options
   // when constructing a ProcessGroup. Each ProcessGroup subclass should
   // extend this struct and define its options if it wants to provide more
   // config options (beyond basic ones defined here) to end user.
+  // 内部选项类
   struct TORCH_API Options : torch::CustomClassHolder {
     explicit Options(
         std::string backend,
@@ -62,7 +63,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     const std::string backend;
   };
-
+  // 内部public的BackendType
   enum BackendType : uint8_t {
     UNDEFINED = 0,
     GLOO = 1,
@@ -109,7 +110,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
   BackendType getBackendType() const {
     return backendType_;
   };
-
+  // 合并 Sochin: 合并什么 ???
   virtual void startCoalescing(c10::DeviceType deviceType) {
     // only nccl has implemented startCoalescing so only execute for nccl
     // backends
@@ -124,12 +125,12 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
     auto work = backend->endCoalescing();
     return work;
   }
-
+  // broadcast 子类实现
   virtual c10::intrusive_ptr<Work> broadcast(
       std::vector<at::Tensor>& tensors,
       const BroadcastOptions& opts = BroadcastOptions()) {
     static auto op =
-        c10::Dispatcher::singleton()
+        c10::Dispatcher::singleton()                              // 分派器机制
             .findSchemaOrThrow("c10d::broadcast_", "")
             .typed<
                 std::tuple<std::vector<at::Tensor>, c10::intrusive_ptr<Work>>(
@@ -150,7 +151,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         opts.asyncOp,
         opts.timeout.count()));
   }
-
+  // allreduce
   virtual c10::intrusive_ptr<Work> allreduce(
       std::vector<at::Tensor>& tensors,
       const AllreduceOptions& opts = AllreduceOptions()) {
@@ -172,7 +173,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         opts.sparseIndices,
         opts.timeout.count()));
   }
-
+  // allreduce_coalesced
   virtual c10::intrusive_ptr<Work> allreduce_coalesced(
       std::vector<at::Tensor>& tensors,
       const AllreduceCoalescedOptions& opts = AllreduceCoalescedOptions()) {
@@ -190,7 +191,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         c10::make_intrusive<ReduceOp>(opts.reduceOp),
         opts.timeout.count());
   }
-
+  // reduce
   virtual c10::intrusive_ptr<Work> reduce(
       std::vector<at::Tensor>& tensors,
       const ReduceOptions& opts = ReduceOptions()) {
@@ -211,7 +212,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         opts.rootTensor,
         opts.timeout.count());
   }
-
+  // allgather操作
   virtual c10::intrusive_ptr<Work> allgather(
       std::vector<std::vector<at::Tensor>>& outputTensors,
       std::vector<at::Tensor>& inputTensors,
@@ -301,7 +302,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         inputTensors,
         c10::intrusive_ptr<ProcessGroup>::unsafe_reclaim_from_nonowning(this));
   }
-
+  // gather操作
   virtual c10::intrusive_ptr<Work> gather(
       std::vector<std::vector<at::Tensor>>& outputTensors,
       std::vector<at::Tensor>& inputTensors,
@@ -321,7 +322,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         opts.rootRank,
         opts.timeout.count());
   }
-
+  // scatter操作
   virtual c10::intrusive_ptr<Work> scatter(
       std::vector<at::Tensor>& outputTensors,
       std::vector<std::vector<at::Tensor>>& inputTensors,
@@ -345,7 +346,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         opts.asyncOp,
         opts.timeout.count()));
   }
-
+  // reduce_scatter操作
   virtual c10::intrusive_ptr<Work> reduce_scatter(
       std::vector<at::Tensor>& outputTensors,
       std::vector<std::vector<at::Tensor>>& inputTensors,
@@ -415,7 +416,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         c10::make_intrusive<::c10d::ReduceOp>(opts.reduceOp),
         opts.timeout.count());
   }
-
+  // alltoall_base操作
   virtual c10::intrusive_ptr<Work> alltoall_base(
       at::Tensor& outputBuffer,
       at::Tensor& inputBuffer,
@@ -439,7 +440,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         inputSplitSizes,
         opts.timeout.count());
   }
-
+  // alltoall操作
   virtual c10::intrusive_ptr<Work> alltoall(
       std::vector<at::Tensor>& outputTensors,
       std::vector<at::Tensor>& inputTensors,
@@ -521,7 +522,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
               " does not yet support sequence numbers."));
     }
   }
-
+  // send操作
   virtual c10::intrusive_ptr<Work> send(
       std::vector<at::Tensor>& tensors,
       int dstRank,
@@ -539,7 +540,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         dstRank,
         tag);
   }
-
+  // recv操作
   virtual c10::intrusive_ptr<Work> recv(
       std::vector<at::Tensor>& tensors,
       int srcRank,
@@ -557,7 +558,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         srcRank,
         tag);
   }
-
+  // recvAnysource操作
   virtual c10::intrusive_ptr<Work> recvAnysource(
       std::vector<at::Tensor>& tensors,
       int tag) {
@@ -572,7 +573,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
         c10::intrusive_ptr<ProcessGroup>::unsafe_reclaim_from_nonowning(this),
         tag);
   }
-
+  // barrier操作
   virtual c10::intrusive_ptr<Work> barrier(
       const BarrierOptions& opts = BarrierOptions()) {
     static at::Tensor tensor;
@@ -612,11 +613,11 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
   c10::intrusive_ptr<Options> getOptions() {
     return options_;
   }
-
+  // 设备类型到backend的映射
   bool hasBackends() {
     return !deviceTypeToBackendType_.empty();
   }
-
+  // 设置Backend Sochin: TODO
   void setBackend(
       c10::DeviceType deviceType,
       BackendType backendType,
@@ -641,7 +642,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
       }
     }
   }
-
+  // 什么是默认的Backend
   c10::intrusive_ptr<Backend> getDefaultBackend() const {
     TORCH_CHECK(
         backendTypeToBackend_.find(backendType_) != backendTypeToBackend_.end(),
@@ -676,7 +677,7 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
     }
     return devices;
   }
-
+  // 注册完成的回调
   void registerOnCompletionHook(
       std::function<void(std::shared_ptr<WorkInfo>)>&& hook) {
     getDefaultBackend()->registerOnCompletionHook(std::move(hook));

@@ -77,7 +77,7 @@ static void poison_fork() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// CUDA management methods
+// CUDA management methods CUDA 管理方法
 ////////////////////////////////////////////////////////////////////////////////
 
 PyObject* THCPModule_setDevice_wrap(PyObject* self, PyObject* arg) {
@@ -1753,6 +1753,7 @@ PyObject* THCPModule_benchmarkLimitCuDNN(PyObject* _unused, PyObject* noargs) {
 }
 
 // NOLINTNEXTLINE(*-c-arrays*, *-global-variables)
+// 包装C cuda函数给 python _C 模块调用
 static struct PyMethodDef _THCPModule_methods[] = {
     {"_cuda_init", THCPModule_initExtension, METH_NOARGS, nullptr},
     {"_cuda_setDevice", THCPModule_setDevice_wrap, METH_O, nullptr},
@@ -1969,13 +1970,13 @@ void initCudnnBindings(PyObject* module);
 } // namespace shared
 
 void initModule(PyObject* module) {
-  python::initCommMethods(module);
+  python::initCommMethods(module);          // nccl 集合通信
   // As weird as it seems, this file is also compiled for ROCm,
   // so this condition might not always be true...
-  shared::initCudartBindings(module);
-  shared::initNvtxBindings(module);
+  shared::initCudartBindings(module);       // cudart绑定
+  shared::initNvtxBindings(module);         // nvtx绑定
 #if defined(USE_CUDNN) || defined(USE_ROCM)
-  shared::initCudnnBindings(module);
+  shared::initCudnnBindings(module);        // cudnn绑定
 #endif
   registerCudaDeviceProperties(module);
   registerCudaPluggableAllocator(module);

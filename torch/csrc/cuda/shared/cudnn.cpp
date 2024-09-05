@@ -74,7 +74,7 @@ size_t getVersionInt() {
 #endif
 
 namespace torch::cuda::shared {
-
+// cudnn优化的绑定
 void initCudnnBindings(PyObject* module) {
   auto m = py::handle(module).cast<py::module>();
 

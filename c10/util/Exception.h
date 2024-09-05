@@ -113,7 +113,7 @@ class C10_API Error : public std::exception {
   void refresh_what();
   std::string compute_what(bool include_backtrace) const;
 };
-
+// 警告类
 class C10_API Warning {
  public:
   class C10_API UserWarning {};
@@ -147,13 +147,13 @@ class C10_API Warning {
 
  private:
   // The type of warning
-  warning_variant_t type_;
+  warning_variant_t type_;            // 警告类型
 
   // Where the warning happened.
-  SourceLocation source_location_;
+  SourceLocation source_location_;    // 位置
 
   // The actual warning message.
-  std::string msg_;
+  std::string msg_;                   // 警告信息
 
   // See note: [Verbatim Warnings]
   bool verbatim_;

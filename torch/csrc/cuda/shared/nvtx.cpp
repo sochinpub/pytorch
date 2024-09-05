@@ -5,7 +5,7 @@
 #include <torch/csrc/utils/pybind.h>
 
 namespace torch::cuda::shared {
-
+// 什么是nvtx ???
 void initNvtxBindings(PyObject* module) {
   auto m = py::handle(module).cast<py::module>();
 

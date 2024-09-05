@@ -75,7 +75,7 @@ C10_EXPORT Dispatcher& Dispatcher::realSingleton() {
   static Dispatcher _singleton;
   return _singleton;
 }
-
+// 迭代
 std::optional<OperatorHandle> Dispatcher::findOp(const OperatorName& overload_name) {
   return operatorLookupTable_.read([&] (const ska::flat_hash_map<OperatorName, OperatorHandle>& operatorLookupTable) -> std::optional<OperatorHandle> {
     auto found = operatorLookupTable.find(overload_name);
@@ -120,7 +120,7 @@ void Dispatcher::waitForImpl(const OperatorName& op_name, std::optional<c10::Dis
     "must warmup each interpreter identically, e.g., import all "
     "the same dependencies.");
 }
-
+// 查找
 std::optional<OperatorHandle> Dispatcher::findSchema(const OperatorName& overload_name) {
   auto it = findOp(overload_name);
   if (it.has_value()) {
@@ -133,7 +133,7 @@ std::optional<OperatorHandle> Dispatcher::findSchema(const OperatorName& overloa
     return it;
   }
 }
-
+//
 OperatorHandle Dispatcher::findSchemaOrThrow(const char* name, const char* overload_name) {
   auto it = findSchema({name, overload_name});
   if (!it.has_value()) {

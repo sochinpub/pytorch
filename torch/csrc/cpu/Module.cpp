@@ -3,7 +3,7 @@
 #include <torch/csrc/utils/pybind.h>
 
 namespace torch::cpu {
-
+// CPU C 转 _C python模块
 void initModule(PyObject* module) {
   auto m = py::handle(module).cast<py::module>();
 

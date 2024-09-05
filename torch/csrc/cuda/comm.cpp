@@ -45,7 +45,7 @@ struct unique_type_checker {
 //
 // Broadcast a source tensor (CPU or CUDA) to a list of CUDA devices, or CUDA
 // tensors on one or more devices.
-
+// 广播一个tensor到一系列的GPU设备上
 // no checks
 static inline std::vector<Tensor>& _broadcast_out_impl(
     const Tensor& tensor,
@@ -58,12 +58,12 @@ static inline std::vector<Tensor>& _broadcast_out_impl(
     nccl_list.emplace_back(out_tensor);
   }
   if (nccl::is_available(nccl_list)) {
-    nccl::broadcast(nccl_list);
+    nccl::broadcast(nccl_list);         // 直接调用nccl的broadcast:nccl.cpp
   } else {
 #else
   {
 #endif
-    for (auto& out_tensor : out_tensors) {
+    for (auto& out_tensor : out_tensors) { // 不支持NCCL时， 直接拷贝
       out_tensor.copy_(tensor, /*non_blocking=*/true);
     }
   }
@@ -73,7 +73,7 @@ static inline std::vector<Tensor>& _broadcast_out_impl(
 std::vector<Tensor>& broadcast_out(
     const Tensor& tensor,
     std::vector<Tensor>& out_tensors) {
-  for (const auto i : c10::irange(out_tensors.size())) {
+  for (const auto i : c10::irange(out_tensors.size())) { // 检查输出设备是否在cuda设备上
     TORCH_CHECK(
         out_tensors[i].is_cuda(),
         "Expected all output tensors to be CUDA tensors, but output tensor at index ",
@@ -309,14 +309,14 @@ std::vector<at::Tensor>& scatter_out(
   }
   return out_tensors;
 }
-
+// nccl scatter操作
 std::vector<at::Tensor> scatter(
     const at::Tensor& tensor,
     at::IntArrayRef devices,
     const std::optional<std::vector<int64_t>>& chunk_sizes,
     int64_t dim,
-    const std::optional<std::vector<std::optional<at::cuda::CUDAStream>>>&
-        streams) {
+    const std::optional<std::vector<std::optional<at::cuda::CUDAStream>>>&streams) 
+{
   TORCH_CHECK(!devices.empty(), "Expected at least one device to scatter to");
   if (chunk_sizes.has_value()) {
     TORCH_CHECK(
@@ -333,6 +333,7 @@ std::vector<at::Tensor> scatter(
       : tensor.chunk(
             /*chunks=*/static_cast<int64_t>(devices.size()), /*dim=*/dim);
   at::cuda::OptionalCUDAStreamGuard cuda_guard;
+  // 调用C10
   for (const auto i : c10::irange(chunks.size())) {
     const auto device_index = static_cast<int16_t>(devices[i]);
     if (device_index != tensor.get_device()) {
@@ -360,7 +361,7 @@ std::vector<at::Tensor> scatter(
           /*copy=*/false,
           /*memory_format=*/at::MemoryFormat::Preserve);
     }
-  }
+  } // for
   return chunks;
 }
 

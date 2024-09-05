@@ -13,16 +13,18 @@
 #include <torch/csrc/profiler/unwind/unwind.h>
 
 namespace torch::cuda::python {
-void initCommMethods(PyObject* module) {
+// cuda集合通信的函数，c转python: 通过pybind11实现
+void initCommMethods(PyObject* module) {                                        // 模块对象
   auto m = py::cast<py::module>(module);
+  // def生成代码： 暴露C函数的代码给Python
   m.def(
-       "_broadcast_coalesced",
+       "_broadcast_coalesced",                                                  // 函数名
        [](std::vector<at::Tensor>& tensors,
           const std::vector<int64_t>& devices,
           size_t buffer_size) {
          return broadcast_coalesced(tensors, devices, buffer_size);
-       },
-       py::arg("tensors"),
+       },                                                                       // lambda 函数：指定了函数参数类型
+       py::arg("tensors"),                                                      // 多个函数参数， 给定参数名
        py::arg("devices"),
        py::arg("buffer_size"),
        py::call_guard<py::gil_scoped_release>())
@@ -51,13 +53,13 @@ void initCommMethods(PyObject* module) {
              std::optional<py::object> py_streams) {
             std::optional<std::vector<std::optional<at::cuda::CUDAStream>>>
                 streams;
-            if (py_streams) {
+            if (py_streams) { // 如果指定了cuda strem
               py::handle handle = *py_streams;
-              streams = THPUtils_PySequence_to_CUDAStreamList(handle.ptr());
+              streams = THPUtils_PySequence_to_CUDAStreamList(handle.ptr()); // 通过stream句柄，查找cuda stream
             }
-            // Note: We're holding the GIL up to here.
+            // Note: We're holding the GIL up to here. 仍然拿着全局解释器锁，这里会导致hang, 如果scatter函数不返回
             pybind11::gil_scoped_release no_gil;
-            return scatter(tensor, devices, chunk_sizes, dim, streams);
+            return scatter(tensor, devices, chunk_sizes, dim, streams); // comm.cpp
           },
           py::arg("tensor"),
           py::arg("devices"),

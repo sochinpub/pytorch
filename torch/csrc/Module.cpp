@@ -1294,7 +1294,7 @@ static PyObject* THPModule_are_vmap_fallback_warnings_enabled(
   }
   END_HANDLE_TH_ERRORS
 }
-
+// 通过python调用的所有函数列表
 static PyMethodDef TorchMethods[] = { // NOLINT
     {"_initExtension", THPModule_initExtension, METH_O, nullptr},
     {"_autograd_init", THPAutograd_initExtension, METH_NOARGS, nullptr},
@@ -1606,6 +1606,7 @@ class WeakTensorRef {
 
 extern "C" C10_EXPORT PyObject* initModule();
 // separate decl and defn for msvc error C2491
+// 所有的_C 模块暴露给python调用的C++前端
 PyObject* initModule() {
   HANDLE_TH_ERRORS
 
@@ -1618,7 +1619,7 @@ PyObject* initModule() {
 #define ASSERT_TRUE(cmd) \
   if (!(cmd))            \
   return nullptr
-
+  // 先压入到vector中
   THPUtils_addPyMethodDefs(methods, TorchMethods);
   THPUtils_addPyMethodDefs(methods, DataLoaderMethods);
   THPUtils_addPyMethodDefs(methods, torch::autograd::python_functions());
@@ -1642,11 +1643,18 @@ PyObject* initModule() {
       methods, torch::distributed::rpc::testing::python_functions());
 #endif
 #endif
-
+  // torch._C 模块
   static struct PyModuleDef torchmodule = {
-      PyModuleDef_HEAD_INIT, "torch._C", nullptr, -1, methods.data()};
-  module = PyModule_Create(&torchmodule);
+      PyModuleDef_HEAD_INIT, "torch._C", nullptr, -1,
+      methods.data()        // 所有上述压入到vector的方法
+  };
+  module = PyModule_Create(&torchmodule);                 // 创建 C 转python的模块对象：PyObject
   ASSERT_TRUE(module);
+  /**
+   * 
+   * 
+   * 
+   */
   ASSERT_TRUE(THPGenerator_init(module));
   ASSERT_TRUE(THPException_init(module));
   THPSize_init(module);
@@ -1690,7 +1698,7 @@ PyObject* initModule() {
   torch::profiler::initIttBindings(module);
 #endif
 #ifdef USE_CUDA
-  torch::cuda::initModule(module);
+  torch::cuda::initModule(module);                      // cuda C 模块绑定初始化
 #endif
 #ifdef USE_XPU
   torch::xpu::initModule(module);
@@ -2329,10 +2337,10 @@ inline void pytorch_duplicate_guard() {
   ;
 }
 
-struct call_duplicate_guard {
+struct call_duplicate_guard {// 防御性保护：检查是否两次初始化
   call_duplicate_guard() {
     pytorch_duplicate_guard();
   }
 };
 
-static call_duplicate_guard _call_duplicate_guard;
+static call_duplicate_guard _call_duplicate_guard;  // 运行时初始化，直接检查pytorch _C 模块是否被重复初始化

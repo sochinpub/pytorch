@@ -167,7 +167,7 @@ def reduce_add_coalesced(inputs, destination=None, buffer_size=10485760):
 
 def scatter(tensor, devices=None, chunk_sizes=None, dim=0, streams=None, *, out=None):
     """Scatters tensor across multiple GPUs.
-
+        多GPU之间tesnor进行scatter操作
     Args:
         tensor (Tensor): tensor to scatter. Can be on CPU or GPU.
         devices (Iterable[torch.device, str or int], optional): an iterable of

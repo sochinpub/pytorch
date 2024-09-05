@@ -33,30 +33,30 @@ namespace c10 {
 /// ArrayRef - Represent a constant reference to an array (0 or more elements
 /// consecutively in memory), i.e. a start pointer and a length.  It allows
 /// various APIs to take consecutive elements easily and conveniently.
-///
+/// 一个数组的常量引用（内存中连续）
 /// This class does not own the underlying data, it is expected to be used in
 /// situations where the data resides in some other buffer, whose lifetime
 /// extends past that of the ArrayRef. For this reason, it is not in general
 /// safe to store an ArrayRef.
-///
+/// 该类不拥有底层数据（因此是一个常量引用），数据驻存在其他的buffer上
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
 template <typename T>
 class ArrayRef final {
  public:
-  using iterator = const T*;
-  using const_iterator = const T*;
+  using iterator = const T*;            // 常量引用
+  using const_iterator = const T*;      // 同样常量引用
   using size_type = size_t;
-  using value_type = T;
+  using value_type = T;                 // 值类型是T
 
   using reverse_iterator = std::reverse_iterator<iterator>;
 
  private:
   /// The start of the array, in an external buffer.
-  const T* Data;
+  const T* Data;                        // 常量指针
 
   /// The number of elements.
-  size_type Length;
+  size_type Length;                     // 原始长度
 
   void debugCheckNullptrInvariant() {
     TORCH_INTERNAL_ASSERT_DEBUG_ONLY(
@@ -73,7 +73,7 @@ class ArrayRef final {
 
   /// Construct an ArrayRef from a single element.
   // TODO Make this explicit
-  constexpr ArrayRef(const T& OneElt) : Data(&OneElt), Length(1) {}
+  constexpr ArrayRef(const T& OneElt) : Data(&OneElt), Length(1) {}         // 从单个元素创建该数组
 
   /// Construct an ArrayRef from a pointer and length.
   C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA ArrayRef(const T* data, size_t length)
@@ -83,7 +83,7 @@ class ArrayRef final {
 
   /// Construct an ArrayRef from a range.
   C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA ArrayRef(const T* begin, const T* end)
-      : Data(begin), Length(end - begin) {
+      : Data(begin), Length(end - begin) { // 根据数组范围，创建
     debugCheckNullptrInvariant();
   }
 
@@ -92,7 +92,7 @@ class ArrayRef final {
   /// copy-construct an ArrayRef.
   template <typename U>
   /* implicit */ ArrayRef(const SmallVectorTemplateCommon<T, U>& Vec)
-      : Data(Vec.data()), Length(Vec.size()) {
+      : Data(Vec.data()), Length(Vec.size()) {                              // 
     debugCheckNullptrInvariant();
   }
 
@@ -177,20 +177,20 @@ class ArrayRef final {
   }
 
   /// front - Get the first element.
-  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA const T& front() const {
+  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA const T& front() const {     // 首元素
     TORCH_CHECK(
         !empty(), "ArrayRef: attempted to access front() of empty list");
     return Data[0];
   }
 
   /// back - Get the last element.
-  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA const T& back() const {
+  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA const T& back() const {      // 尾元素
     TORCH_CHECK(!empty(), "ArrayRef: attempted to access back() of empty list");
     return Data[Length - 1];
   }
 
   /// equals - Check for element-wise equality.
-  constexpr bool equals(ArrayRef RHS) const {
+  constexpr bool equals(ArrayRef RHS) const {     // 判断相等
     return Length == RHS.Length && std::equal(begin(), end(), RHS.begin());
   }
 
@@ -209,7 +209,7 @@ class ArrayRef final {
   }
 
   /// slice(n) - Chop off the first N elements of the array.
-  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA ArrayRef<T> slice(size_t N) const {
+  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA ArrayRef<T> slice(size_t N) const {  // 切片
     TORCH_CHECK(
         N <= size(), "ArrayRef: invalid slice, N = ", N, "; size = ", size());
     return slice(N, size() - N);
@@ -218,12 +218,12 @@ class ArrayRef final {
   /// @}
   /// @name Operator Overloads
   /// @{
-  constexpr const T& operator[](size_t Index) const {
+  constexpr const T& operator[](size_t Index) const {     // 重载 数组索引 []
     return Data[Index];
   }
 
   /// Vector compatibility
-  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA const T& at(size_t Index) const {
+  C10_HOST_CONSTEXPR_EXCEPT_WIN_CUDA const T& at(size_t Index) const { // 重载 at函数
     TORCH_CHECK(
         Index < Length,
         "ArrayRef: invalid index Index = ",

@@ -99,10 +99,12 @@ class Gather(Function):
             scattered_grads = tuple(g[0] for g in scattered_grads)
         return (None, None) + scattered_grads
 
-
+# 继承自自动微分的函数
 class Scatter(Function):
     @staticmethod
     def forward(ctx, target_gpus, chunk_sizes, dim, input):
+        """ 前向做scatter工作
+        """
         # 获取GPU索引
         target_gpus = [_get_device_index(x, True) for x in target_gpus]
         ctx.dim = dim

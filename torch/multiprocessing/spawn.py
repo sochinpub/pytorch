@@ -15,7 +15,7 @@ from . import _prctl_pr_set_pdeathsig  # type: ignore[attr-defined]
 
 log = logging.getLogger(__name__)
 
-
+# 定义集中类型的异常
 class ProcessException(Exception):
     __slots__ = ["error_index", "error_pid"]
 
@@ -64,7 +64,7 @@ class ProcessExitedException(ProcessException):
             (self.msg, self.error_index, self.pid, self.exit_code, self.signal_name),
         )
 
-
+# wrapper 真实用户的函数，并补充一个进程索引i作为参数
 def _wrap(fn, i, args, error_file):
     # prctl(2) is a Linux specific system call.
     # On other systems the following function call has no effect.
@@ -84,12 +84,12 @@ def _wrap(fn, i, args, error_file):
             pickle.dump(traceback.format_exc(), fh)
         sys.exit(1)
 
-
+# 进程上下文
 class ProcessContext:
     def __init__(self, processes, error_files):
         self.error_files = error_files
         self.processes = processes
-        self.sentinels = {
+        self.sentinels = { # 哨兵
             process.sentinel: index for index, process in enumerate(processes)
         }
 
@@ -216,17 +216,19 @@ def start_processes(
         # used a multiprocessing.Queue but that can be prone to
         # deadlocks, so we went with a simpler solution for a one-shot
         # message between processes.
+        # 每个进程分配一个临时文件，来跟踪执行栈
         tf = tempfile.NamedTemporaryFile(
             prefix="pytorch-errorfile-", suffix=".pickle", delete=False
         )
         tf.close()
         os.unlink(tf.name)
+        # 创建进程
         process = mp.Process(
             target=_wrap,
             args=(fn, i, args, tf.name),
             daemon=daemon,
         )
-        process.start()
+        process.start() # 启动
         error_files.append(tf.name)
         processes.append(process)
 
@@ -238,7 +240,7 @@ def start_processes(
     while not context.join():
         pass
 
-
+# 暴露的接口
 def spawn(fn, args=(), nprocs=1, join=True, daemon=False, start_method="spawn"):
     r"""Spawns ``nprocs`` processes that run ``fn`` with ``args``.
 
@@ -257,7 +259,7 @@ def spawn(fn, args=(), nprocs=1, join=True, daemon=False, start_method="spawn"):
             The function is called as ``fn(i, *args)``, where ``i`` is
             the process index and ``args`` is the passed through tuple
             of arguments.
-
+            函数调用时，多传入一个进程索引号：fn(i, *args)
         args (tuple): Arguments passed to ``fn``.
         nprocs (int): Number of processes to spawn.
         join (bool): Perform a blocking join on all processes.

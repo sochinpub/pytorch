@@ -33,7 +33,7 @@ namespace c10 {
   _(MTIA, extra)                                  \
   _(PrivateUse1, extra)
 
-enum class DeviceType : int8_t {
+enum class DeviceType : int8_t { // 设备类型
   CPU = 0,
   CUDA = 1, // CUDA.
   MKLDNN = 2, // Reserved for explicit MKLDNN
@@ -55,13 +55,14 @@ enum class DeviceType : int8_t {
   IPU = 18, // Graphcore IPU
   MTIA = 19, // Meta training and inference devices
   PrivateUse1 = 20, // PrivateUse1 device
+  // Sochin： 添加新的设备类型，需要： TODO
   // NB: If you add more devices:
   //  - Change the implementations of DeviceTypeName and isValidDeviceType
   //    in DeviceType.cpp
   //  - Change the number below
   COMPILE_TIME_MAX_DEVICE_TYPES = 21,
 };
-
+// 常量定义的设备类型
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kHIP = DeviceType::HIP;

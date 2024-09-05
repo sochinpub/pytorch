@@ -22,7 +22,7 @@
 #include <torch/csrc/distributed/c10d/Utils.hpp>
 
 namespace c10d {
-
+// gloo Backend 名
 constexpr const char* GLOO_BACKEND_NAME = "gloo";
 
 // ProcessGroupGloo implements Gloo bindings for c10d.
@@ -52,9 +52,9 @@ class TORCH_API ProcessGroupGloo : public Backend {
  public:
   // AsyncWork is the Gloo specific superclass for asynchronous work items.
   // We can split asynchronous work into 3 phases:
-  // 1) Sanity checks and prepare input (e.g. memcpy)
-  // 2) Run operation on background thread
-  // 3) Synchronize with completion on foreground thread
+  // 1) Sanity checks and prepare input (e.g. memcpy)   完整性检查
+  // 2) Run operation on background thread              后端线程运行
+  // 3) Synchronize with completion on foreground thread 在前端线程中同步完成
   //
   // There is state to be shared between these 3 phases and all of this state
   // is captured in the AsyncWork class and its derivatives.
@@ -66,6 +66,7 @@ class TORCH_API ProcessGroupGloo : public Backend {
   //
   // FIXME: This probably should be called WorkGloo since the work is executed
   // in sync mode by a background thread.
+  // 目前在后台线程中是同步模式
   class TORCH_API AsyncWork : public Work {
    public:
     explicit AsyncWork(

@@ -23,6 +23,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
   // when constructing a Backend. Each Backend subclass should
   // extend this struct and define its options if it wants to provide more
   // config options (beyond basic ones defined here) to end user.
+  // 后端配置积累
   struct TORCH_API Options : torch::CustomClassHolder {
     explicit Options(
         std::string backend,
@@ -30,11 +31,11 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         : timeout(timeout), backend(std::move(backend)) {}
     ~Options() override = default;
 
-    std::chrono::milliseconds timeout;
+    std::chrono::milliseconds timeout;  // 超时时间
 
     // backend name
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-    const std::string backend;
+    const std::string backend;          // 字符串的backend名
   };
 
   explicit Backend(int rank, int size);
@@ -78,7 +79,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
   virtual const std::string getBackendName() const {
     TORCH_INTERNAL_ASSERT(false, "getBackendName is not implemented.");
   };
-
+  // broadcast操作
   virtual c10::intrusive_ptr<Work> broadcast(
       std::vector<at::Tensor>& /* tensors */,
       const BroadcastOptions& /* opts */ = BroadcastOptions()) {
@@ -86,7 +87,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         false,
         c10::str("Backend ", getBackendName(), " does not support broadcast"));
   }
-
+  // allreduce操作
   virtual c10::intrusive_ptr<Work> allreduce(
       std::vector<at::Tensor>& /* tensors */,
       const AllreduceOptions& /* opts */ = AllreduceOptions()) {
@@ -94,7 +95,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         false,
         c10::str("Backend ", getBackendName(), " does not support allreduce"));
   }
-
+  // allreduce_sparse操作
   virtual c10::intrusive_ptr<Work> allreduce_sparse(
       std::vector<at::Tensor>& /* tensors */,
       const AllreduceOptions& /* opts */ = AllreduceOptions()) {
@@ -105,7 +106,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
             getBackendName(),
             " does not support allreduce sparse"));
   }
-
+  // allreduce
   virtual c10::intrusive_ptr<Work> allreduce_coalesced(
       std::vector<at::Tensor>& /* tensors */,
       const AllreduceCoalescedOptions& /* opts */ =
@@ -117,7 +118,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
             getBackendName(),
             " does not support allreduce_coalesced"));
   }
-
+  // reduce操作
   virtual c10::intrusive_ptr<Work> reduce(
       std::vector<at::Tensor>& /* tensors */,
       const ReduceOptions& /* opts */ = ReduceOptions()) {
@@ -125,7 +126,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         false,
         c10::str("Backend ", getBackendName(), " does not support reduce"));
   }
-
+  // allgather操作
   virtual c10::intrusive_ptr<Work> allgather(
       std::vector<std::vector<at::Tensor>>& /* outputTensors */,
       std::vector<at::Tensor>& /* inputTensors */,
@@ -179,7 +180,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
             getBackendName(),
             " does not support allgather_into_tensor_coalesced"));
   }
-
+  // gather操作
   virtual c10::intrusive_ptr<Work> gather(
       std::vector<std::vector<at::Tensor>>& /* outputTensors */,
       std::vector<at::Tensor>& /* inputTensors */,
@@ -188,7 +189,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         false,
         c10::str("Backend ", getBackendName(), " does not support gather"));
   }
-
+  // scatter操作
   virtual c10::intrusive_ptr<Work> scatter(
       std::vector<at::Tensor>& /* outputTensors */,
       std::vector<std::vector<at::Tensor>>& /* inputTensors */,
@@ -197,7 +198,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         false,
         c10::str("Backend ", getBackendName(), " does not support scatter"));
   }
-
+  // reduce scatter操作
   virtual c10::intrusive_ptr<Work> reduce_scatter(
       std::vector<at::Tensor>& /* outputTensors */,
       std::vector<std::vector<at::Tensor>>& /* inputTensors */,
@@ -207,7 +208,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
         c10::str(
             "Backend ", getBackendName(), " does not support reduce_scatter"));
   }
-
+  // 
   virtual c10::intrusive_ptr<Work> _reduce_scatter_base(
       at::Tensor& /* outputBuffer */,
       at::Tensor& /* inputBuffer */,
@@ -396,6 +397,7 @@ class TORCH_API Backend : public torch::CustomClassHolder {
  protected:
   // Implementations of this interface need to call this to setup
   // appropriate logging etc.
+  // 该操作的实现需要初始化日志配置
   void init();
 
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -407,9 +409,9 @@ class TORCH_API Backend : public torch::CustomClassHolder {
   DebugLevel dist_debug_level_;
   std::string pg_name_;
   std::string pg_desc_;
-
+  // Sochin:  完成的回调
   std::function<void(std::shared_ptr<WorkInfo>)> onCompletionHook_;
-
+  // Sochin: 设备
   std::optional<at::Device> bound_device_id_;
 };
 

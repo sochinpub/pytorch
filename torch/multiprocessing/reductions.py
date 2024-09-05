@@ -3,7 +3,7 @@ import multiprocessing
 import os
 import threading
 from multiprocessing.reduction import ForkingPickler
-from multiprocessing.util import register_after_fork
+from multiprocessing.util import register_after_fork        # fork 执行的动作
 from typing import Union
 
 import torch

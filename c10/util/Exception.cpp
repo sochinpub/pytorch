@@ -7,7 +7,7 @@
 #include <utility>
 
 namespace c10 {
-
+// 错误类
 Error::Error(std::string msg, Backtrace backtrace, const void* caller)
     : msg_(std::move(msg)), backtrace_(std::move(backtrace)), caller_(caller) {
   refresh_what();

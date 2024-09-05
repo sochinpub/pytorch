@@ -50,7 +50,7 @@ from .c10d_logger import _exception_logger, _time_logger
 from .constants import default_pg_nccl_timeout, default_pg_timeout
 from .rendezvous import register_rendezvous_handler, rendezvous  # noqa: F401
 
-
+# 对外暴露接口
 __all__ = [
     "Backend",
     "BackendConfig",
@@ -136,6 +136,7 @@ _unpickler = pickle.Unpickler
 
 
 # Change __module__ of all imported types from torch._C._distributed_c10d that are public
+# 导入模块的 __module__属性更改
 def _export_c_types() -> None:
     _public_types_to_change_module = [
         AllreduceCoalescedOptions,
@@ -160,7 +161,7 @@ def _export_c_types() -> None:
 
 
 _export_c_types()
-
+# 以下尝试导入， 失败就是不支持
 try:
     from torch._C._distributed_c10d import ProcessGroupMPI
 
@@ -204,7 +205,7 @@ PG_WRAPPER_STORE_PREFIX = "pg_wrapper"
 # these unsupported ops will return garbage values rather than error out.
 # (e.g. max(2+3i, 3+2i) = 3+3i)
 # We'd like calls to unsupported ops to error out accordingly,
-# rather than returning garbage values.
+# rather than returning garbage values. 复数有黑名单
 def supports_complex(reduceOp: ReduceOp) -> bool:
     """Return true if reduce ops is supported. False otherwise."""
     denyList = [
@@ -221,7 +222,7 @@ def supports_complex(reduceOp: ReduceOp) -> bool:
 class Backend(str):
     """
     An enum-like class for backends.
-
+    枚举类型的backends
     Available backends: GLOO, NCCL, UCC, MPI, and other registered backends.
 
     The values of this class are lowercase strings, e.g., ``"gloo"``. They can
@@ -236,7 +237,7 @@ class Backend(str):
               initial value of some fields. Users should neither use it directly
               nor assume its existence.
     """
-
+    # TODO: Sochin, support MLU
     UNDEFINED = "undefined"
     GLOO = "gloo"
     NCCL = "nccl"
@@ -248,13 +249,14 @@ class Backend(str):
     _plugins: Dict[str, _BackendPlugin] = {}
 
     backend_list = [UNDEFINED, GLOO, NCCL, UCC, MPI]
-
+    # 默认的设备到Backend的映射
     default_device_backend_map: Dict[str, str] = {
         "cpu": GLOO,
         "cuda": NCCL,
     }
-
+    # TODO: Scohin, support MLU
     backend_capability: Dict[str, List[str]] = {
+    #    GLOO: ["cpu", "cuda", "mlu"],
         GLOO: ["cpu", "cuda"],
         NCCL: ["cuda"],
         UCC: ["cpu", "cuda"],
@@ -277,7 +279,7 @@ class Backend(str):
         if value == Backend.UNDEFINED:
             value = name.lower()
         return value
-
+    # 类的静态方法：Sochin: TODO, 支持注册Backend
     @classmethod
     def register_backend(
         cls,
@@ -288,7 +290,7 @@ class Backend(str):
     ) -> None:
         """
         Register a new backend with the given name and instantiating function.
-
+        这个类方法提供给第三方库用来注册新的backends
         This class method is used by 3rd party ``ProcessGroup`` extension to
         register new backends.
 
@@ -312,6 +314,7 @@ class Backend(str):
         """
         # Allow UCC plugin if Pytorch is not built with native support.
         # TODO: remove this exception once UCC plugin is fully deprecated.
+        # 什么是UCC插件 ???
         if name != Backend.UCC or (name == Backend.UCC and is_ucc_available()):
             assert not hasattr(
                 Backend, name.upper()
@@ -1457,7 +1460,7 @@ def init_process_group(
         assert world_size > 0, "world_size must be positive if using store"
         assert rank >= 0, "rank must be non-negative if using store"
     elif init_method is None:
-        init_method = "env://"
+        init_method = "env://"  # 默认读env
 
     if backend:
         backend = Backend(backend)
@@ -1519,23 +1522,23 @@ def init_process_group(
             device_id=device_id,
             group_desc="default_pg",
         )
-        _update_default_pg(default_pg)
+        _update_default_pg(default_pg)  # 更细全局默认的process group
 
     _world.pg_group_ranks[GroupMember.WORLD] = {i: i for i in range(GroupMember.WORLD.size())}  # type: ignore[attr-defined, index]
     _backend = _world.pg_map[not_none(GroupMember.WORLD)][0]
     _default_pg_init_method = init_method
-
+    # 异常劫持保存
     old_hook = sys.excepthook
     excepthook_prefix = f"[rank{get_rank()}]"
 
     def _distributed_excepthook(*args):
         old_stderr = sys.stderr
-        sys.stderr = buf = io.StringIO()
+        sys.stderr = buf = io.StringIO()    # 替换掉标准错误流
         try:
-            old_hook(*args)
+            old_hook(*args)                 # 原来的系统异常函数
         finally:
             sys.stderr = old_stderr
-        msg = buf.getvalue()
+        msg = buf.getvalue()                # 从标准错误流的输出中获取错误消息，逐行添加rank字符串前缀
         msg = "\n".join(
             f"{excepthook_prefix}: {s}" if s != "" else "" for s in msg.split("\n")
         )
@@ -1603,7 +1606,7 @@ def _shutdown_backend(pg):
         # explictly call shutdown to ensure that NCCL resources are released
         backend._shutdown()
 
-
+# Sochin: TODO 分析
 def _new_process_group_helper(
     group_size,
     group_rank,
@@ -1696,9 +1699,11 @@ def _new_process_group_helper(
         pg.bound_device_id = device_id
     backend_config = BackendConfig(backend)
     backend_class: torch._C._distributed_c10d.Backend
+    # 当前Backend支持的设备类型字符串
     for device, backend_str in backend_config.get_device_backend_map().items():
         # Use the group name as prefix in the default store, such that
         # a single store can be reused by multiple groups.
+        # 使用group name作为默认的store名
         backend_prefix_store = PrefixStore(f"{device}/", prefix_store)
 
         if backend_str == Backend.MPI:
@@ -1724,6 +1729,7 @@ def _new_process_group_helper(
             # TODO: remove this check after lazy initialization is supported
             # if pg_options is not None:
             #     raise RuntimeError("GLOO options not supported")
+            # 创建特定的
             backend_class = ProcessGroupGloo(
                 backend_prefix_store, group_rank, group_size, timeout=timeout
             )
@@ -1790,6 +1796,7 @@ def _new_process_group_helper(
                 backend_class = creator_fn(dist_backend_opts, pg_options)
 
         # Set sequence numbers for gloo and nccl backends.
+        # 
         if backend_str == Backend.GLOO:
             assert isinstance(backend_class, ProcessGroupGloo)
             backend_class._set_sequence_number_for_group()
@@ -1832,11 +1839,11 @@ def _new_process_group_helper(
         # register only a single backend when all get_device_backend_map values are the same
         if len(set(backend_config.get_device_backend_map().values())) == 1:
             for device in backend_config.get_device_backend_map().keys():
-                pg._register_backend(torch.device(device), backend_type, backend_class)
+                pg._register_backend(torch.device(device), backend_type, backend_class) # 注册gloo支持的设备类型
 
             # break out of outer loop to not create any more backends
             break
-
+        # 逐个注册Backendend
         pg._register_backend(torch.device(device), backend_type, backend_class)
 
     # set group_name and group_dsec to backend
@@ -1849,15 +1856,15 @@ def _new_process_group_helper(
         eager_backend = pg._get_backend(device_id)
         eager_backend.eager_connect_single_device(device_id)
 
-    # update global state
+    # update global state 更新全局状态
     _world.pg_map[pg] = (backend, prefix_store)
     _world.pg_names[pg] = group_name
-    _register_process_group(group_name, pg)
+    _register_process_group(group_name, pg)             # 这里做了什么
 
     _world.pg_backend_config[pg] = str(backend_config)
     # "" is the default tag for user PGs
     if pg_tag in [None, ""]:
-        pg_tag = f"ptd:{group_name}"
+        pg_tag = f"ptd:{group_name}"                    # ptd:0
         _world.tags_to_pg.setdefault("", []).append(pg)
     else:
         pg_tag = f"user:{pg_tag}"
@@ -2400,7 +2407,7 @@ def broadcast(tensor, src, group=None, async_op=False):
 
     if group is None or group is GroupMember.WORLD:
         default_pg = _get_default_group()
-        work = default_pg.broadcast([tensor], opts)
+        work = default_pg.broadcast([tensor], opts)     # Sochin: No backend type associated with device type mlu
     else:
         group_src_rank = get_group_rank(group, src)
         opts.rootRank = group_src_rank
@@ -4463,7 +4470,7 @@ def split_group(
     )
     backend_type = ProcessGroup.BackendType.NCCL
     backend_class._set_sequence_number_for_group()
-
+    # 注册 cuda Backend
     pg._register_backend(torch.device("cuda"), backend_type, backend_class)
 
     # set group_name and group_desc to backend

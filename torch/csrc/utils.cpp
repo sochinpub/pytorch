@@ -104,7 +104,7 @@ void THPUtils_setError(const char* format, ...) {
   va_end(fmt_args);
   PyErr_SetString(PyExc_RuntimeError, buffer);
 }
-
+// 函数压入到vector
 void THPUtils_addPyMethodDefs(
     std::vector<PyMethodDef>& vector,
     PyMethodDef* methods) {

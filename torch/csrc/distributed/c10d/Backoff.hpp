@@ -16,10 +16,11 @@ class TORCH_API Backoff {
   virtual void reset() = 0;
 
   void sleepBackoff() {
+    // 睡眠一段时间
     std::this_thread::sleep_for(nextBackoff());
   }
 };
-
+// 指数回退算法
 class TORCH_API ExponentialBackoffWithJitter : public Backoff {
  public:
   ExponentialBackoffWithJitter();
@@ -34,7 +35,7 @@ class TORCH_API ExponentialBackoffWithJitter : public Backoff {
   std::chrono::milliseconds maxInterval{60000};
 
  private:
-  std::mt19937 gen_;
+  std::mt19937 gen_;  // 梅森旋转随机数
   std::chrono::milliseconds currentInterval_{0};
 };
 

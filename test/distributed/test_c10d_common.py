@@ -15,7 +15,7 @@ from sys import platform
 from typing import Callable, Dict, Optional
 
 import torch
-import torch.distributed as dist
+import torch.distributed as dist # python dist模块：初始化
 
 if not dist.is_available():
     print("distributed package not available, skipping tests", file=sys.stderr)

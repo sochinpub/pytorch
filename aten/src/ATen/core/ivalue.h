@@ -18,6 +18,7 @@
 #include <utility>
 
 namespace torch {
+// 当前继承，只是为了支持，可以使用torch定义的共享指针 intrusive_ptr
 class TORCH_API CustomClassHolder : public c10::intrusive_ptr_target {};
 namespace jit {
 using ::torch::CustomClassHolder;

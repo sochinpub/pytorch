@@ -333,6 +333,7 @@ void initializeStreamsEvents(
     std::vector<c10::Event>& events) {
   streams.reserve(tensors.size());
   events.reserve(tensors.size());
+  // 
   for (const auto i : c10::irange(tensors.size())) {
     c10::Device device = tensors[i].device();
     c10::impl::VirtualGuardImpl impl(device.type());
@@ -865,7 +866,7 @@ void ProcessGroupGloo::enqueue(c10::intrusive_ptr<AsyncWork> work) {
 }
 
 namespace {
-
+// gloo异步broadcast：源端是CPU
 class AsyncBroadcastWork : public ProcessGroupGloo::AsyncWork {
  public:
   AsyncBroadcastWork(
@@ -894,16 +895,16 @@ class AsyncBroadcastWork : public ProcessGroupGloo::AsyncWork {
   const uint32_t tag;
 
   void broadcast(at::Tensor& tensor) {
-    const auto& scalarType = tensor.scalar_type();
+    const auto& scalarType = tensor.scalar_type();  // 数据类型
     gloo::BroadcastOptions opts(context);
-    opts.setRoot(rootRank);
+    opts.setRoot(rootRank);                         // 拷贝源端 rank
     opts.setTag(tag);
     GENERATE_ALL_TYPES(scalarType, setOutput, opts, tensor);
     gloo::broadcast(opts);
   }
 
   void run() override {
-    broadcast(inputs[rootTensor]);
+    broadcast(inputs[rootTensor]);  // 将当前
 
     // Copy to non-root tensors
     for (const auto i : c10::irange(inputs.size())) {
@@ -914,7 +915,7 @@ class AsyncBroadcastWork : public ProcessGroupGloo::AsyncWork {
     }
   }
 };
-
+// TODO: Sochin 添加MLU的后端
 class AsyncBroadcastCUDAWork : public AsyncBroadcastWork {
  public:
   AsyncBroadcastCUDAWork(
@@ -928,18 +929,19 @@ class AsyncBroadcastCUDAWork : public AsyncBroadcastWork {
     initializeStreamsEvents(inputs, streams, events);
 
     // Create pinned host side tensors.
+    // 创建pinmme, 源头创建pinmem等待拷贝
     tmp = pinnedLike(inputs[rootTensor]);
     c10::OptionalStreamGuard guard;
     if (context->rank == rootRank) {
       guard.reset_stream(streams[rootTensor]);
-      tmp.copy_(inputs[rootTensor], /* non_blocking */ true);
+      tmp.copy_(inputs[rootTensor], /* non_blocking */ true); // 拷贝到cpu的pinmem上
     }
   }
 
   void run() override {
     // Synchronize with copy operation if applicable.
     if (context->rank == rootRank) {
-      streams[rootTensor].synchronize();
+      streams[rootTensor].synchronize();    // 等待异步的device2hostpinmem拷贝结束
     }
 
     // Run broadcast on host side tensors.
@@ -947,7 +949,7 @@ class AsyncBroadcastCUDAWork : public AsyncBroadcastWork {
 
     // Kick off copy back to the CUDA tensors.
     c10::OptionalStreamGuard guard;
-    for (const auto i : c10::irange(inputs.size())) {
+    for (const auto i : c10::irange(inputs.size())) { // 从pinmem上拷贝回GPU
       guard.reset_stream(streams[i]);
       inputs[i].copy_(tmp, /* non_blocking */ true);
       events[i].record(streams[i]);
@@ -982,7 +984,7 @@ c10::intrusive_ptr<Work> ProcessGroupGloo::broadcast(
       invalidArgument, opts.rootTensor, static_cast<int64_t>(inputs.size()));
   assertDense(invalidArgument, inputs);
   assertTypeAndSizesMatch(invalidArgument, inputs);
-
+  // 当前设备，打印看当前设备
   const auto& device = inputs[0].device();
   switch (device.type()) {
     case at::kCPU:
@@ -991,6 +993,7 @@ c10::intrusive_ptr<Work> ProcessGroupGloo::broadcast(
       // If the user gave us a CUDA tensor then CUDA must be loaded.
       TORCH_INTERNAL_ASSERT(at::hasCUDA());
       break;
+    // Sochin: TODO support mlu
     default:
       invalidArgument(c10::str("unsupported device type ", device.type()));
   }

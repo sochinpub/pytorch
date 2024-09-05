@@ -8,7 +8,7 @@ import torch
 def is_available() -> bool:
     """
     Return ``True`` if the distributed package is available.
-
+    这里的分布式包指的是C扩展，默认编译选项是包含的：torch.distributed
     Otherwise,
     ``torch.distributed`` does not expose any other APIs. Currently,
     ``torch.distributed`` is available on Linux, MacOS and Windows. Set
@@ -18,11 +18,12 @@ def is_available() -> bool:
     """
     return hasattr(torch._C, "_c10d_init")
 
-
+# 直接初始化 c10d模块
 if is_available() and not torch._C._c10d_init():
     raise RuntimeError("Failed to initialize torch.distributed")
 
 # Custom Runtime Errors thrown from the distributed package
+# c10d运行时的抛出错误
 DistError = torch._C._DistError
 DistBackendError = torch._C._DistBackendError
 DistNetworkError = torch._C._DistNetworkError
@@ -56,7 +57,7 @@ if is_available():
         TCPStore,
         Work as _Work,
     )
-
+    # 支持在多进程的子进程使用pdb
     class _DistributedPdb(pdb.Pdb):
         """
         Supports using PDB from inside a multiprocessing child process.

@@ -20,16 +20,17 @@ namespace c10 {
 namespace detail {
 
 // Obtains the base name from a full path.
+// 路径的Base path 移除，保留文件名
 C10_API std::string StripBasename(const std::string& full_path);
-
+// 移除扩展名
 C10_API std::string ExcludeFileExtension(const std::string& full_path);
-
+// 编译时空字符串
 struct CompileTimeEmptyString {
-  operator const std::string&() const {
+  operator const std::string&() const { // 返回对象引用
     static const std::string empty_string_literal;
     return empty_string_literal;
   }
-  operator const char*() const {
+  operator const char*() const { // 对象调用
     return "";
   }
 };
@@ -48,7 +49,7 @@ struct CanonicalizeStrTypes<char[N]> {
 inline std::ostream& _str(std::ostream& ss) {
   return ss;
 }
-
+// 直接输出某个”可打印“的对象
 template <typename T>
 inline std::ostream& _str(std::ostream& ss, const T& t) {
   // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
@@ -57,10 +58,11 @@ inline std::ostream& _str(std::ostream& ss, const T& t) {
 }
 
 // Overloads of _str for wide types; forces narrowing.
+// 重载宽字符的_str函数
 C10_API std::ostream& _str(std::ostream& ss, const wchar_t* wCStr);
 C10_API std::ostream& _str(std::ostream& ss, const wchar_t& wChar);
 C10_API std::ostream& _str(std::ostream& ss, const std::wstring& wString);
-
+// 模板特殊实例化：输出空
 template <>
 inline std::ostream& _str<CompileTimeEmptyString>(
     std::ostream& ss,
@@ -83,6 +85,7 @@ struct _str_wrapper final {
 };
 
 // Specializations for already-a-string types.
+// 特殊实例化
 template <>
 struct _str_wrapper<std::string> final {
   // return by reference to avoid the binary size of a string copy
@@ -111,6 +114,7 @@ struct _str_wrapper<> final {
 } // namespace detail
 
 // Convert a list of string-like arguments into a single string.
+// 变参模板
 template <typename... Args>
 inline decltype(auto) str(const Args&... args) {
   return detail::_str_wrapper<
@@ -133,15 +137,16 @@ size_t C10_API
 ReplaceAll(std::string& s, c10::string_view from, c10::string_view to);
 
 /// Represents a location in source code (for debugging).
-struct C10_API SourceLocation {
+struct C10_API SourceLocation { // 源代码位置信息
   const char* function;
   const char* file;
   uint32_t line;
 };
-
+// 输出流对象输出位置信息
 std::ostream& operator<<(std::ostream& out, const SourceLocation& loc);
 
 // unix isprint but insensitive to locale
+// 可打印字符
 inline bool isPrint(char s) {
   return s > 0x1f && s < 0x7f;
 }

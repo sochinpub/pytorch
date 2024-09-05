@@ -15,11 +15,11 @@ namespace detail {
 
 std::string StripBasename(const std::string& full_path) {
 #ifdef _WIN32
-  const std::string separators("/\\");
+  const std::string separators("/\\");  // win32 路径分隔符 \\
 #else
   const std::string separators("/");
 #endif
-  size_t pos = full_path.find_last_of(separators);
+  size_t pos = full_path.find_last_of(separators);  // 最后一个分隔符位置
   if (pos != std::string::npos) {
     return full_path.substr(pos + 1, std::string::npos);
   } else {
@@ -45,9 +45,10 @@ std::ostream& _strFromWide(std::ostream& ss, const std::wstring& wString);
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 // TODO (huydhn) https://en.cppreference.com/w/cpp/header/codecvt has been
 // deprecated in C++17 but there is no alternative yet, so I just ack it
+// 当前实现C++17 已经废弃
 std::ostream& _strFromWide(std::ostream& ss, const std::wstring& wString) {
   std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-  return _str(ss, converter.to_bytes(wString));
+  return _str(ss, converter.to_bytes(wString)); // 转成宽字符引用
 }
 #pragma GCC diagnostic pop
 
@@ -60,19 +61,21 @@ std::ostream& _strFromWide(std::ostream& ss, const std::wstring& wString) {
 }
 
 #endif // _WIN32
-
+// 重载宽字符的指针打印
 std::ostream& _str(std::ostream& ss, const wchar_t* wCStr) {
   return _strFromWide(ss, std::wstring(wCStr));
 }
+// 重载宽字符的引用打印
 std::ostream& _str(std::ostream& ss, const wchar_t& wChar) {
   return _strFromWide(ss, std::wstring(1, wChar));
 }
+// 重载宽字符的wstring打印
 std::ostream& _str(std::ostream& ss, const std::wstring& wString) {
   return _strFromWide(ss, wString);
 }
 
 } // namespace detail
-
+// 输出
 std::ostream& operator<<(std::ostream& out, const SourceLocation& loc) {
   out << loc.function << " at " << loc.file << ":" << loc.line;
   return out;

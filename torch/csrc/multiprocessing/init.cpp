@@ -19,7 +19,7 @@
 namespace torch::multiprocessing {
 
 namespace {
-
+// torch._C._multiprocessing_init()
 PyObject* multiprocessing_init(PyObject* _unused, PyObject* noargs) {
   auto multiprocessing_module =
       THPObjectPtr(PyImport_ImportModule("torch.multiprocessing"));
@@ -31,7 +31,7 @@ PyObject* multiprocessing_init(PyObject* _unused, PyObject* noargs) {
 
   module.def("_prctl_pr_set_pdeathsig", [](int signal) {
 #if defined(__linux__)
-    auto rv = prctl(PR_SET_PDEATHSIG, signal);
+    auto rv = prctl(PR_SET_PDEATHSIG, signal);      // 调用了 prctl 系统调用
     SYSASSERT(rv, "prctl");
 #endif
   });

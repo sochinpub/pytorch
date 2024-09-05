@@ -86,7 +86,7 @@ torch::cuda::nccl::ncclResult from_nccl_result(ncclResult_t var) {
       throw std::runtime_error("Unconvertible NCCL type");
   }
 }
-
+// nccl的数据类型转换
 ncclDataType_t to_nccl_data_type(c10::ScalarType type) {
   switch (type) {
     case at::kFloat:
@@ -113,7 +113,7 @@ ncclDataType_t to_nccl_data_type(c10::ScalarType type) {
       TORCH_CHECK(false, "Unconvertible NCCL type ", type);
   }
 }
-
+// 转换成nccl数据类型
 ncclDataType_t to_nccl_data_type(const at::Tensor& t) {
   if (!t.is_cuda()) {
     TORCH_CHECK(
@@ -243,7 +243,7 @@ void throw_nccl_error(torch::cuda::nccl::ncclResult status) {
       << ncclGetErrorString(to_nccl_result(status));
   throw std::runtime_error(err.str());
 }
-
+// nccl communicator 列表
 struct NcclCommList {
   std::unique_ptr<ncclComm_t[]> comms;
   int ndevices;
@@ -267,21 +267,22 @@ struct NcclCommList {
       }
     }
   }
-  ArrayRef<ncclComm_t> ref() const {
+  ArrayRef<ncclComm_t> ref() const {  // 返回数组的引用
     return ArrayRef<ncclComm_t>(comms.get(), ndevices);
   }
 };
 
 using device_list = std::vector<int>;
 // accesses to this object have to be guarded by THC's CudaFreeMutex
+// 必须持锁访问
 static std::unordered_map<device_list, NcclCommList, c10::hash<device_list>>
     _communicators;
 
-ArrayRef<ncclComm_t> get_communicators(TensorList inputs) {
-  static auto get_device = [](const at::Tensor& t) -> int {
+ArrayRef<ncclComm_t> get_communicators(TensorList inputs) { // nccl communicator创建
+  static auto get_device = [](const at::Tensor& t) -> int { // tensor所在的设备
     return t.get_device();
   };
-  device_list devices = fmap(inputs, get_device);
+  device_list devices = fmap(inputs, get_device);           // 设备ID列表
   auto it = _communicators.find(devices);
   if (it == _communicators.end()) {
     it = _communicators.emplace(devices, devices).first;
@@ -339,7 +340,8 @@ void check_inputs(
     TensorList inputs,
     TensorList outputs,
     int input_multiplier,
-    int output_multiplier) {
+    int output_multiplier)
+{
   // len(inputs) == len(outputs)
   size_t len = inputs.size();
 
@@ -578,10 +580,10 @@ void broadcast(
 #ifdef USE_NCCL
   using namespace torch::cuda::nccl::detail;
   check_inputs(tensors, tensors, 1, 1);
-  auto data_type = to_nccl_data_type(tensors[0]);
-  int64_t numel = tensors[0].numel();
+  auto data_type = to_nccl_data_type(tensors[0]); // nccl数据类型
+  int64_t numel = tensors[0].numel();             // 数据数目
 
-  const auto comms = user_comms.empty() ? get_communicators(tensors)
+  const auto comms = user_comms.empty() ? get_communicators(tensors)            // 需要创建nccl communicator
                                         : ArrayRef<ncclComm_t>(user_comms);
 
   AutoNcclGroup nccl_group_guard;
@@ -602,7 +604,7 @@ void broadcast(
         count_max,
         ")");
     ncclComm_t comm = comms[i];
-    NCCL_CHECK(ncclBcast(
+    NCCL_CHECK(ncclBcast(                                                 // 执行 ncclBcast
         tensors[i].data_ptr(),
         numel,
         data_type,

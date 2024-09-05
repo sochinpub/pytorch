@@ -1,10 +1,12 @@
 # mypy: allow-untyped-defs
 """torch.multiprocessing is a wrapper around the native :mod:`multiprocessing` module.
-
+ 注册用户的reducers，使用shm来提供不同进程之间的数据共享
 It registers custom reducers, that use shared memory to provide shared
 views on the same data in different processes. Once the tensor/storage is moved
 to shared_memory (see :func:`~torch.Tensor.share_memory_`), it will be possible
 to send it to other processes without making any copies.
+
+详细见 torch.Tensor.share_memory_
 
 The API is 100% compatible with the original module - it's enough to change
 ``import multiprocessing`` to ``import torch.multiprocessing`` to have all the
@@ -19,7 +21,7 @@ import sys
 
 import torch
 from .reductions import init_reductions
-
+# 暴露接口
 __all__ = ["set_sharing_strategy", "get_sharing_strategy", "get_all_sharing_strategies"]
 
 
@@ -31,7 +33,7 @@ __all__ += multiprocessing.__all__  # noqa: PLE0605 type: ignore[attr-defined]
 
 # This call adds a Linux specific prctl(2) wrapper function to this module.
 # See https://github.com/pytorch/pytorch/pull/14391 for more information.
-torch._C._multiprocessing_init()
+torch._C._multiprocessing_init()    # 多进程初始化
 
 
 """Add helper function to spawn N processes and wait for completion of any of

@@ -6,10 +6,10 @@ import torch
 
 from ._functions import Gather, Scatter
 
-
+# 导出接口
 __all__ = ["scatter", "scatter_kwargs", "gather"]
 
-
+# Python collections.namedtuple
 @deprecated(
     "`is_namedtuple` is deprecated, please use the python checks instead",
     category=FutureWarning,
@@ -25,7 +25,8 @@ def _is_namedtuple(obj: Any) -> bool:
         isinstance(obj, tuple) and hasattr(obj, "_asdict") and hasattr(obj, "_fields")
     )
 
-
+# 定义T类型：支持dict,list,tuple
+# 这固定了T的数据类型，可以指导IDE用来静态类型检查
 T = TypeVar("T", dict, list, tuple)
 
 

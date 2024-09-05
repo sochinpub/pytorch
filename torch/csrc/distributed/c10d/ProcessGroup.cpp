@@ -29,55 +29,55 @@ static ProcessGroup::BackendType strToBackendType(std::string_view backend) {
     return ProcessGroup::BackendType::CUSTOM;
   }
 }
-
+// 集合操作定义
 std::string opTypeToString(OpType opType) {
   switch (opType) {
-    case OpType::BROADCAST:
+    case OpType::BROADCAST: // 0
       return "BROADCAST";
-    case OpType::ALLREDUCE:
+    case OpType::ALLREDUCE: // 1
       return "ALLREDUCE";
-    case OpType::ALLREDUCE_COALESCED:
+    case OpType::ALLREDUCE_COALESCED: // 2
       return "ALLREDUCE_COALESCED";
-    case OpType::REDUCE:
+    case OpType::REDUCE:              // 3
       return "REDUCE";
-    case OpType::ALLGATHER:
+    case OpType::ALLGATHER:           // 4
       return "ALLGATHER";
-    case OpType::_ALLGATHER_BASE:
+    case OpType::_ALLGATHER_BASE:     // 5
       return "_ALLGATHER_BASE";
-    case OpType::ALLGATHER_COALESCED:
+    case OpType::ALLGATHER_COALESCED: // 6
       return "ALLGATHER_COALESCED";
-    case OpType::GATHER:
+    case OpType::GATHER:              // 7
       return "GATHER";
-    case OpType::SCATTER:
+    case OpType::SCATTER:             // 8
       return "SCATTER";
-    case OpType::REDUCE_SCATTER:
+    case OpType::REDUCE_SCATTER:      // 9
       return "REDUCE_SCATTER";
-    case OpType::ALLTOALL_BASE:
+    case OpType::ALLTOALL_BASE:       // 10
       return "ALLTOALL_BASE";
-    case OpType::ALLTOALL:
+    case OpType::ALLTOALL:            // 11
       return "ALLTOALL";
-    case OpType::SEND:
+    case OpType::SEND:                // 12
       return "SEND";
-    case OpType::RECV:
+    case OpType::RECV:                // 13
       return "RECV";
-    case OpType::RECVANYSOURCE:
+    case OpType::RECVANYSOURCE:       // 14
       return "RECVANYSOURCE";
-    case OpType::BARRIER:
+    case OpType::BARRIER:             // 15
       return "BARRIER";
-    case OpType::UNKNOWN:
+    case OpType::UNKNOWN:             // 100
       return "UNKNOWN";
-    case OpType::_REDUCE_SCATTER_BASE:
+    case OpType::_REDUCE_SCATTER_BASE: // 16
       return "_REDUCE_SCATTER_BASE";
-    case OpType::COALESCED:
+    case OpType::COALESCED:            // 17
       return "COALESCED";
-    case OpType::_ALLREDUCE_SPARSE:
+    case OpType::_ALLREDUCE_SPARSE:   // 18
       return "_ALLREDUCE_SPARSE";
     default:
       TORCH_INTERNAL_ASSERT(false, "Unknown op type!");
   }
   return "UNKNOWN";
 }
-
+// P2P 操作
 bool isP2POp(OpType opType, bool batchP2P /*= false*/) {
   if (batchP2P)
     return false;
@@ -88,6 +88,8 @@ bool isP2POp(OpType opType, bool batchP2P /*= false*/) {
 c10::intrusive_ptr<Backend> ProcessGroup::getBackend(
     c10::DeviceType deviceType) {
   // If there is a backend associated with this device type then return it
+  // 设备类型关联了一个backend,直接返回
+  // Sochin: 当前设备类型究竟是什么 ???
   if (deviceTypeToBackend_.find(deviceType) != deviceTypeToBackend_.end()) {
     return deviceTypeToBackend_.at(deviceType);
   }
@@ -95,13 +97,14 @@ c10::intrusive_ptr<Backend> ProcessGroup::getBackend(
   // Get the backend type associated with the device
   ProcessGroup::BackendType backendType{ProcessGroup::BackendType::UNDEFINED};
   try {
+    // Sochin: TODO support MLU，这里是没有经过注册的
     backendType = deviceTypeToBackendType_.at(deviceType);
   } catch (const std::out_of_range& e) {
     TORCH_CHECK(
         false, "No backend type associated with device type ", deviceType);
   }
 
-  // Check if the backend has already been initialized
+  // Check if the backend has already been initialized 是否完成了初始化
   if (backendTypeToBackend_.find(backendType) != backendTypeToBackend_.end()) {
     auto backend = backendTypeToBackend_.at(backendType);
     deviceTypeToBackend_[deviceType] = backend;
@@ -129,7 +132,7 @@ ProcessGroup::ProcessGroup(
       dist_debug_level_(debug_level()) {
   C10_LOG_API_USAGE_ONCE("c10d.process_group");
 }
-
+// 默认BackendType是未定义的
 ProcessGroup::ProcessGroup(int rank, int size)
     : rank_(rank), size_(size), backendType_(BackendType::UNDEFINED) {}
 
