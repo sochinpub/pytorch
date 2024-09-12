@@ -636,12 +636,13 @@ class TORCH_API ProcessGroup : public torch::CustomClassHolder {
     } else {
       // check if backend has value
       if (backend.has_value()) {
-        deviceTypeToBackend_[deviceType] = backend.value();
-        backendTypeToBackend_[backendType] = backend.value();
+        deviceTypeToBackend_[deviceType] = backend.value(); // mlu: gloo
+        backendTypeToBackend_[backendType] = backend.value(); // mlu: mpi
         (*backend)->setBoundDeviceId(bound_device_id_);
       }
     }
   }
+
   // 什么是默认的Backend
   c10::intrusive_ptr<Backend> getDefaultBackend() const {
     TORCH_CHECK(

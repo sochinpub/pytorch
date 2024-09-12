@@ -4,6 +4,7 @@ import os
 import platform
 import shutil
 from glob import glob
+import pdb
 
 from setuptools import distutils  # type: ignore[import]
 
@@ -52,11 +53,11 @@ def _create_build_env() -> dict[str, str]:
     # and not cmake flags!
     # you should NEVER add something to this list. It is bad practice to
     # have cmake read the environment
-    my_env = os.environ.copy()
+    my_env = os.environ.copy()                                                                  # 拷贝环境变量
     if (
         "CUDA_HOME" in my_env
     ):  # Keep CUDA_HOME. This env variable is still used in other part.
-        my_env["CUDA_BIN_PATH"] = my_env["CUDA_HOME"]
+        my_env["CUDA_BIN_PATH"] = my_env["CUDA_HOME"]                                           # CUDA_HOME
     elif IS_WINDOWS:  # we should eventually make this as part of FindCUDA.
         cuda_win = glob("C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v*.*")
         if len(cuda_win) > 0:
@@ -79,13 +80,17 @@ def build_caffe2(
     cmake_only: bool,
     cmake: CMake,
 ) -> None:
+    """ 
+        编译caffe2
+    """
     my_env = _create_build_env()
-    build_test = not check_negative_env_flag("BUILD_TEST")
+    build_test = not check_negative_env_flag("BUILD_TEST")                          # 编译测试
     cmake.generate(
         version, cmake_python_library, build_python, build_test, my_env, rerun_cmake
     )
     if cmake_only:
         return
+    pdb.set_trace()
     cmake.build(my_env)
     if build_python:
         caffe2_proto_dir = os.path.join(cmake.build_dir, "caffe2", "proto")

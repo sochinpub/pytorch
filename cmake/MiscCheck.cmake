@@ -1,3 +1,4 @@
+# CMake 常用模块
 include(CheckCXXSourceCompiles)
 include(CheckCXXCompilerFlag)
 include(CMakePushCheckState)
@@ -5,6 +6,7 @@ include(CMakePushCheckState)
 set(CAFFE2_USE_EXCEPTION_PTR 1)
 
 # ---[ Check if we want to turn off deprecated warning due to glog.
+# 
 if(USE_GLOG)
   cmake_push_check_state(RESET)
   set(CMAKE_REQUIRED_FLAGS "-std=c++14")
@@ -14,7 +16,7 @@ if(USE_GLOG)
         return 0;
       }" CAFFE2_NEED_TO_TURN_OFF_DEPRECATION_WARNING
       FAIL_REGEX ".*-Wno-deprecated.*")
-
+  # 关闭过时warning输出
   if(NOT CAFFE2_NEED_TO_TURN_OFF_DEPRECATION_WARNING AND NOT MSVC)
     message(STATUS "Turning off deprecation warning due to glog.")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
@@ -22,9 +24,10 @@ if(USE_GLOG)
   cmake_pop_check_state()
 endif()
 
-# ---[ Check if the compiler has AVX/AVX2 support. We only check AVX2.
+message(STATUS "${Y} Sochin: AVX lib checking ... ${E}")
+# ---[ Check if the compiler has AVX/AVX2 support. We only check AVX2. 坚持是否支持AVX2
 if(NOT INTERN_BUILD_MOBILE)
-  find_package(AVX) # checks AVX and AVX2
+  find_package(AVX) # checks AVX and AVX2   查找AVX的包: 运行测试，尝试构建和链接
   if(CXX_AVX2_FOUND)
     message(STATUS "Current compiler supports avx2 extension. Will build perfkernels.")
     # Also see CMakeLists.txt under caffe2/perfkernels.
@@ -32,7 +35,9 @@ if(NOT INTERN_BUILD_MOBILE)
     set(CAFFE2_PERF_WITH_AVX2 1)
   endif()
 endif()
+
 # ---[ Check if the compiler has AVX512 support.
+message(STATUS "${Y} Sochin: AVX compiler checking ... ${E}")
 cmake_push_check_state(RESET)
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   # We could've used MSVC's hidden option /arch:AVX512 that defines __AVX512F__,
@@ -47,6 +52,8 @@ else()
   # linux_conda_3.7_cu100_build
   set(CMAKE_REQUIRED_FLAGS "-mavx512f -mavx512dq -mavx512vl")
 endif()
+
+message(STATUS "${Y} Sochin: C++ 支持 AVX512 编译 ... ${E}")
 CHECK_CXX_SOURCE_COMPILES(
     "#if defined(_MSC_VER)
      #include <intrin.h>
@@ -76,10 +83,12 @@ endif()
 cmake_pop_check_state()
 
 # ---[ Checks if compiler supports -fvisibility=hidden
+# 检查compiler 支持的编译选项
+message(STATUS "${Y} Sochin: 编译器支持符号隐藏 ... ${E}")
 check_cxx_compiler_flag("-fvisibility=hidden" COMPILER_SUPPORTS_HIDDEN_VISIBILITY)
 check_cxx_compiler_flag("-fvisibility-inlines-hidden" COMPILER_SUPPORTS_HIDDEN_INLINE_VISIBILITY)
 if(${COMPILER_SUPPORTS_HIDDEN_INLINE_VISIBILITY})
-  set(CAFFE2_VISIBILITY_FLAG "-fvisibility-inlines-hidden")
+  set(CAFFE2_VISIBILITY_FLAG "-fvisibility-inlines-hidden")                   # caffe2默认符号隐藏
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CAFFE2_VISIBILITY_FLAG}")
 endif()
 
@@ -87,8 +96,9 @@ endif()
 # -to add all (including unused) symbols into the dynamic symbol
 # -table. We need this to get symbols when generating backtrace at
 # -runtime.
+message(STATUS "${Y} Sochin: 编译器支持动态库绑定 ... ${E}")
 if(NOT MSVC)
-  check_cxx_compiler_flag("-rdynamic" COMPILER_SUPPORTS_RDYNAMIC)
+  check_cxx_compiler_flag("-rdynamic" COMPILER_SUPPORTS_RDYNAMIC)           # 动态绑定
   if(${COMPILER_SUPPORTS_RDYNAMIC})
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")

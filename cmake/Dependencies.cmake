@@ -6,6 +6,7 @@ if(APPLE)
 else()
   set(_rpath_portable_origin $ORIGIN)
 endif(APPLE)
+
 # Use separate rpaths during build and install phases
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 # Don't use the install-rpath during the build phase
@@ -17,7 +18,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
  # UBSAN triggers when compiling protobuf, so we need to disable it.
 set(UBSAN_FLAG "-fsanitize=undefined")
-
+# Undefined Behavior Sanitizer 运行时非法检测
 macro(disable_ubsan)
   if(CMAKE_C_FLAGS MATCHES ${UBSAN_FLAG} OR CMAKE_CXX_FLAGS MATCHES ${UBSAN_FLAG})
     set(CAFFE2_UBSAN_ENABLED ON)
@@ -36,6 +37,7 @@ endmacro()
 # ---[ CUDA
 if(USE_CUDA)
   # public/*.cmake uses CAFFE2_USE_*
+  message(STATUS "${Y} Sochin: check dependency CUDA ${E}") 
   set(CAFFE2_USE_CUDA ${USE_CUDA})
   set(CAFFE2_USE_CUDNN ${USE_CUDNN})
   set(CAFFE2_USE_CUSPARSELT ${USE_CUSPARSELT})
@@ -85,6 +87,7 @@ endif()
 
 # ---[ XPU
 if(USE_XPU)
+  message(STATUS "${Y} Sochin: check XPU ${E}") 
   include(${CMAKE_CURRENT_LIST_DIR}/public/xpu.cmake)
   if(NOT PYTORCH_FOUND_XPU)
     message(WARNING "Not compiling with XPU. Could NOT find SYCL."
@@ -93,9 +96,10 @@ if(USE_XPU)
   endif()
 endif()
 
-# ---[ Custom Protobuf
+# ---[ Custom Protobuf 编译
 if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_BUILD_MOBILE)
   disable_ubsan()
+  message(STATUS "${Y} Sochin: Check Protobuf ${E}") 
   include(${CMAKE_CURRENT_LIST_DIR}/ProtoBuf.cmake)
   enable_ubsan()
 endif()
@@ -124,6 +128,7 @@ if(USE_ASAN OR USE_TSAN)
 endif()
 
 # ---[ Threads
+message(STATUS "${Y} Sochin: Threads find ${E}") 
 find_package(Threads REQUIRED)
 if(TARGET Threads::Threads)
   list(APPEND Caffe2_DEPENDENCY_LIBS Threads::Threads)
@@ -140,7 +145,7 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO)
 endif()
 
 # ---[ BLAS
-
+message(STATUS "${Y} Sochin: BLAS find ${E}") 
 set(AT_MKLDNN_ACL_ENABLED 0)
 set(AT_MKLDNN_ENABLED 0)
 set(AT_MKL_ENABLED 0)
@@ -178,6 +183,7 @@ elseif(BLAS STREQUAL "BLIS")
   include_directories(SYSTEM ${BLIS_INCLUDE_DIR})
   list(APPEND Caffe2_DEPENDENCY_LIBS ${BLIS_LIB})
 elseif(BLAS STREQUAL "MKL")
+  message(STATUS "${Y} Sochin: BLAS finding MKL ${E}") 
   if(BLAS_SET_BY_USER)
     find_package(MKL REQUIRED)
   else()
@@ -238,8 +244,9 @@ if(NOT INTERN_BUILD_MOBILE)
   set(AT_MKL_SEQUENTIAL 0)
   set(USE_BLAS 1)
   if(NOT (ATLAS_FOUND OR BLIS_FOUND OR GENERIC_BLAS_FOUND OR MKL_FOUND OR OpenBLAS_FOUND OR VECLIB_FOUND OR FlexiBLAS_FOUND OR NVPL_BLAS_FOUND))
-    message(WARNING "Preferred BLAS (" ${BLAS} ") cannot be found, now searching for a general BLAS library")
+    message(WARNING "Sochin: Preferred BLAS (" ${BLAS} ") cannot be found, now searching for a general BLAS library")
     find_package(BLAS)
+    message(STATUS "${Y}Sochin: general BLAS find end ${E}")
     if(NOT BLAS_FOUND)
       set(USE_BLAS 0)
     endif()
@@ -761,6 +768,7 @@ endif()
 
 if(USE_OPENCL)
   message(INFO "USING OPENCL")
+  message(STATUS "${Y} Sochin: opencl find ${E}") 
   find_package(OpenCL REQUIRED)
   include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
   list(APPEND Caffe2_DEPENDENCY_LIBS ${OpenCL_LIBRARIES})
@@ -769,6 +777,7 @@ endif()
 # ---[ NUMA
 if(USE_NUMA)
   if(LINUX)
+    message(STATUS "${Y} Sochin: numa find ${E}") 
     find_package(Numa)
     if(NOT NUMA_FOUND)
       message(WARNING "Not compiling with NUMA. Suppress this warning with -DUSE_NUMA=OFF")
@@ -817,6 +826,7 @@ list(APPEND Caffe2_DEPENDENCY_LIBS fp16)
 
 # ---[ EIGEN
 # Due to license considerations, we will only use the MPL2 parts of Eigen.
+message(STATUS "${Y} Sochin: eigen find ${E}") 
 set(EIGEN_MPL2_ONLY 1)
 if(USE_SYSTEM_EIGEN_INSTALL)
   find_package(Eigen3)
@@ -1115,6 +1125,7 @@ if(USE_NCCL)
     message(WARNING "NCCL is currently only supported under Linux.")
     caffe2_update_option(USE_NCCL OFF)
   elseif(USE_CUDA)
+    message(STATUS "${Y} Sochin: check nccl ${E}") 
     include(${CMAKE_CURRENT_LIST_DIR}/External/nccl.cmake)
     list(APPEND Caffe2_CUDA_DEPENDENCY_LIBS __caffe2_nccl)
   elseif(USE_ROCM)
@@ -1124,6 +1135,7 @@ if(USE_NCCL)
 endif()
 
 # ---[ UCC
+# message(STATUS "${Y} Sochin: check ucc ${E}") 
 if(USE_UCC)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(WARNING "UCC is currently only supported under Linux.")
@@ -1135,6 +1147,7 @@ endif()
 
 # ---[ CUB
 if(USE_CUDA)
+message(STATUS "${Y} Sochin: cub find ${E}") 
   find_package(CUB)
   if(NOT CUB_FOUND)
     message(FATAL_ERROR "Cannot find CUB.")
@@ -1171,7 +1184,7 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
   endif()
 endif()
 
-if(USE_GLOO)
+if(USE_GLOO) 
   if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(WARNING "Gloo can only be used on 64-bit systems.")
     caffe2_update_option(USE_GLOO OFF)
@@ -1235,6 +1248,7 @@ if(USE_GLOO)
 endif()
 
 # ---[ profiling
+message(STATUS "${Y} Sochin: check profiling ${E}")
 if(USE_PROF)
   find_package(htrace)
   if(htrace_FOUND)
@@ -1263,6 +1277,7 @@ if(USE_NNAPI AND NOT ANDROID)
 endif()
 
 # ---[ Onnx
+message(STATUS "${Y} Sochin: check onnx ${E}")
 if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
   if(EXISTS "${CAFFE2_CUSTOM_PROTOC_EXECUTABLE}")
     set(ONNX_CUSTOM_PROTOC_EXECUTABLE ${CAFFE2_CUSTOM_PROTOC_EXECUTABLE})
@@ -1282,11 +1297,13 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
   endif()
   add_definitions(-DONNXIFI_ENABLE_EXT=1)
   if(NOT USE_SYSTEM_ONNX)
+    message(STATUS "${Y} Sochin: dealing third_party onnx ${E}")
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/onnx EXCLUDE_FROM_ALL)
     if(NOT MSVC)
       set_target_properties(onnx_proto PROPERTIES CXX_STANDARD 17)
     endif()
   endif()
+  message(STATUS "${Y} Sochin: dealing third_party foxi ${E}")
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/foxi EXCLUDE_FROM_ALL)
 
   add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
@@ -1297,6 +1314,7 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
     if(ANDROID OR IOS)
       caffe2_interface_library(onnx_proto onnx_library)
     else()
+      message(STATUS "${Y} Sochin: check onnx4 ${E}")
       caffe2_interface_library(onnx onnx_library)
     endif()
     list(APPEND Caffe2_DEPENDENCY_WHOLE_LINK_LIBS onnx_library)
@@ -1387,6 +1405,7 @@ if(NOT INTERN_BUILD_MOBILE)
 
   if(USE_CUDA OR USE_ROCM)
     if(USE_MAGMA)
+      message(STATUS "${Y} Sochin: MAGMA find ${E}")
       find_package(MAGMA)
       if(MAGMA_FOUND)
         message(STATUS "Compiling with MAGMA support")
@@ -1394,7 +1413,7 @@ if(NOT INTERN_BUILD_MOBILE)
         message(STATUS "MAGMA LIBRARIES: ${MAGMA_LIBRARIES}")
         message(STATUS "MAGMA V2 check: ${MAGMA_V2}")
       else()
-        message(STATUS "MAGMA not found. Compiling without MAGMA support")
+        message(STATUS "MAGMA not found. Compiling without MAGMA support") 
         caffe2_update_option(USE_MAGMA OFF)
       endif()
     endif()
@@ -1406,6 +1425,7 @@ if(NOT INTERN_BUILD_MOBILE)
   endif()
 
   # ARM specific flags
+  message(STATUS "${Y} Sochin: ARM find ${E}")
   find_package(ARM)
   if(ASIMD_FOUND)
     message(STATUS "asimd/Neon found with compiler flag : -D__NEON__")
@@ -1428,6 +1448,7 @@ if(NOT INTERN_BUILD_MOBILE)
     add_compile_options(-mcpu=cortex-a9)
   endif()
 
+  message(STATUS "${Y} Sochin: LAPACK find ${E}")
   find_package(LAPACK)
   if(LAPACK_FOUND)
     set(USE_LAPACK 1)
@@ -1545,6 +1566,7 @@ if(USE_KINETO AND INTERN_BUILD_MOBILE AND USE_LITE_INTERPRETER_PROFILER AND (USE
 endif()
 
 if(USE_KINETO)
+  message(STATUS "${Y} Sochin: KINETO check ${E}")
   if((NOT USE_CUDA) OR MSVC)
     set(LIBKINETO_NOCUPTI ON CACHE STRING "" FORCE)
   else()
@@ -1587,7 +1609,7 @@ if(USE_KINETO)
     else()
       set(CUPTI_LIB_NAME "cupti.lib")
     endif()
-
+    message(STATUS "${Y} Sochin: CUPTI find ${E}")
     find_library(CUPTI_LIBRARY_PATH ${CUPTI_LIB_NAME} PATHS
         ${CUDA_SOURCE_DIR}
         ${CUDA_SOURCE_DIR}/extras/CUPTI/lib64

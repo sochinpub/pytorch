@@ -1,4 +1,4 @@
-if(DEFINED GLIBCXX_USE_CXX11_ABI)
+if(DEFINED GLIBCXX_USE_CXX11_ABI)       # 定义了C++11 的ABI
   message(STATUS "_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI} is already defined as a cmake variable")
   return()
 endif()

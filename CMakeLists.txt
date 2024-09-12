@@ -17,13 +17,20 @@ cmake_policy(SET CMP0069 NEW)
 # and it's possible on our Windows configs.
 cmake_policy(SET CMP0092 NEW)
 
-# Prohibit in-source builds
+# Prohibit in-source builds: 不能在源代码目录编译
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR "In-source build are not supported")
 endif()
 
 # ---[ Project and semantic versioning.
 project(Torch CXX C)
+
+string(ASCII 27 Esc)
+set(R "${Esc}[0;31m")   #红色:Esc[0;31m
+set(Y "${Esc}[0;33m")   #黄色：Esc[0;33m
+set(E "${Esc}[m" )      #结束颜色设置：#Esc[0m 
+set(B "${Esc}[1;34m")   #蓝色高亮
+set(RB "${Esc}[1;31;40m") #红色字体黑色背景
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   set(LINUX TRUE)
@@ -33,7 +40,7 @@ endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
-# check and set CMAKE_CXX_STANDARD
+# check and set CMAKE_CXX_STANDARD： 检查CMAKE_CXX_FLAGS 指定的C++ 标准，不能小于c++17
 string(FIND "${CMAKE_CXX_FLAGS}" "-std=c++" env_cxx_standard)
 if(env_cxx_standard GREATER -1)
   message(
@@ -42,16 +49,19 @@ if(env_cxx_standard GREATER -1)
       "PyTorch requires -std=c++17. Please remove -std=c++ settings in your environment."
   )
 endif()
+# 指定C++标准17
 set(CMAKE_CXX_STANDARD
     17
     CACHE STRING
           "The C++ standard whose features are requested to build this target.")
+# 指定C标准11
 set(CMAKE_C_STANDARD
     11
     CACHE STRING
           "The C standard whose features are requested to build this target.")
 
 # ---[ Utils
+# 导入工具
 include(cmake/public/utils.cmake)
 
 # --- [ Check that minimal gcc version is 9.3+
@@ -71,7 +81,7 @@ string(APPEND CMAKE_CUDA_FLAGS
 if(LINUX)
   include(cmake/CheckAbi.cmake)
   string(APPEND CMAKE_CXX_FLAGS
-         " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")
+         " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")  # 使用C++11 ABI
   string(APPEND CMAKE_CUDA_FLAGS
          " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")
   if(${GLIBCXX_USE_CXX11_ABI} EQUAL 1)
@@ -97,7 +107,7 @@ set(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO ON)
 # Googletest's cmake files are going to set it on once they are processed. Let's
 # set it at the very beginning so that the entire build is deterministic.
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-
+# 检测cublas
 if(NOT DEFINED BLAS_SET_BY_USER)
   if(DEFINED BLAS)
     set(BLAS_SET_BY_USER TRUE)
@@ -180,7 +190,7 @@ endif()
 
 set(CPU_AARCH64 OFF)
 set(CPU_INTEL OFF)
-
+# 编译处理器
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(AMD64|x86_64)")
   set(CPU_INTEL ON)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
@@ -189,6 +199,7 @@ endif()
 
 # For non-supported platforms, turn USE_DISTRIBUTED off by default. It is not
 # tested and likely won't work without additional changes.
+# 在不支持的平台上（目前distributed仅仅支持LInux和Win32）
 if(NOT LINUX AND NOT WIN32)
   set(USE_DISTRIBUTED
       OFF
@@ -204,7 +215,10 @@ endif()
 
 # ---[ Options. Note to developers: if you add an option below, make sure you
 # also add it to cmake/Summary.cmake so that the summary prints out the option
-# values.
+# values. 在此处添加的选项，添加到Summary.cmake中，方便打印出来
+# 可选的编译选项，支持
+# 1）ccmake等工具进行可视化选择
+# 2）cmake -DATEN_NO_TEST=ON ...
 include(CMakeDependentOption)
 option(ATEN_NO_TEST "Do not build ATen test binaries" OFF)
 option(BUILD_BINARY "Build C++ binaries" OFF)
@@ -348,6 +362,7 @@ cmake_dependent_option(USE_C10D_MPI "USE C10D MPI" ON "USE_DISTRIBUTED;USE_MPI"
 cmake_dependent_option(
     USE_GLOO "Use Gloo. Only available if USE_DISTRIBUTED is on." ON
     "USE_DISTRIBUTED" OFF)
+# Sochin: TODO delete
 cmake_dependent_option(
   USE_GLOO_WITH_OPENSSL "Use Gloo with OpenSSL. Only available if USE_GLOO is on." OFF
     "USE_GLOO AND LINUX AND NOT INTERN_BUILD_MOBILE" OFF)
@@ -404,7 +419,7 @@ if(USE_CCACHE)
   else()
     message(
       STATUS
-        "Could not find ccache. Consider installing ccache to speed up compilation."
+        "Could not find ccache. Consider installing ccache to speed up compilation."  # ccache加速编译
     )
   endif()
 endif()
@@ -448,7 +463,12 @@ endif()
 # USE_SYSTEM_LIBS is a shortcut variable to toggle all the # USE_SYSTEM_*
 # variables on. Individual USE_SYSTEM_* variables can be toggled with
 # USE_SYSTEM_LIBS being "OFF".
+# Linux发行版不需要太多的嵌入式源代码，从这个意义上说，我们需要能够使用(几乎)空的第三方目录构建pytorch。
+# USE_SYSTEM_LIBS是一个切换所有 USE_SYSTEM_*变量的快捷变量。单独的USE_SYSTEM_*变量可以在USE_SYSTEM_LIBS为“OFF”时进行切换。
+
+# 使用系统提供的库： 默认是关闭
 option(USE_SYSTEM_LIBS "Use all available system-provided libraries." OFF)
+
 option(USE_SYSTEM_CPUINFO "Use system-provided cpuinfo." OFF)
 option(USE_SYSTEM_SLEEF "Use system-provided sleef." OFF)
 option(USE_SYSTEM_GLOO "Use system-provided gloo." OFF)
@@ -493,7 +513,7 @@ cmake_dependent_option(
   ON
   "MSVC"
   OFF)
-
+# CACHE 这个变量
 if(NOT USE_SYSTEM_ONNX)
   set(ONNX_NAMESPACE
       "onnx_torch"
@@ -535,6 +555,7 @@ option(BUILD_EXECUTORCH "Master flag to build Executorch" ON)
 # miniconda3/envs/pytorch-py3.7/lib/libmkl_intel_lp64.so: undefined symbol:
 # mkl_blas_dsyrk
 # https://software.intel.com/en-us/articles/symbol-lookup-error-when-linking-intel-mkl-with-gcc-on-ubuntu
+# 添加共享库连接的flags
 if(LINUX)
   set(CMAKE_SHARED_LINKER_FLAGS
       "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
@@ -646,7 +667,7 @@ if(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " /FS")
   string(APPEND CMAKE_CUDA_FLAGS " -Xcompiler /FS")
 endif(MSVC)
-
+# cuda编译选项
 string(APPEND CMAKE_CUDA_FLAGS " -Xfatbin -compress-all")
 
 # Set INTERN_BUILD_MOBILE for all mobile builds. Components that are not
@@ -691,6 +712,7 @@ if(ANDROID
 endif()
 
 # INTERN_BUILD_ATEN_OPS is used to control whether to build ATen/TH operators.
+# 是否编译Aten/TH操作符
 set(INTERN_BUILD_ATEN_OPS ON)
 
 if(NOT DEFINED USE_BLAS)
@@ -725,6 +747,7 @@ if(INTERN_BUILD_MOBILE)
 endif()
 
 # ---[ Version numbers for generated libraries
+# 读文件，读取torch版本
 file(READ version.txt TORCH_DEFAULT_VERSION)
 # Strip trailing newline
 string(REGEX REPLACE "\n$" "" TORCH_DEFAULT_VERSION "${TORCH_DEFAULT_VERSION}")
@@ -748,20 +771,22 @@ if(NOT TORCH_BUILD_VERSION)
       "${TORCH_DEFAULT_VERSION}"
       CACHE STRING "Torch build version" FORCE)
 endif()
+
 caffe2_parse_version_str(TORCH ${TORCH_BUILD_VERSION})
 set(TORCH_SOVERSION "${TORCH_VERSION_MAJOR}.${TORCH_VERSION_MINOR}")
 
-# ---[ CMake scripts + modules
+# ---[ CMake scripts + modules    模块到CMAKE_MODULE_PATH 列表
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-# ---[ CMake build directories
+# ---[ CMake build directories  编译目录
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
+# 启用测试： 后面add_test()
 enable_testing()
 
 # ---[ Build variables set within the cmake tree
+# 支持caffe2编译的各类变量
 include(cmake/BuildVariables.cmake)
 set(CAFFE2_ALLOWLIST
     ""
@@ -813,8 +838,10 @@ if(NOT IOS
 endif()
 
 # ---[ Misc checks to cope with various compiler modes
-include(cmake/MiscCheck.cmake)
+# 杂项检查
 
+message(STATUS "${R} (1) Sochin: MISC checking ... ${E}")
+include(cmake/MiscCheck.cmake)
 # External projects
 include(ExternalProject)
 
@@ -847,7 +874,8 @@ endif()
 #
 # The only solution is to include(cmake/Dependencies.cmake), and defer the
 # aotriton build decision later.
-
+# 依赖检查
+message(STATUS "${R} (2) Sochin: depencencies ...${E}") 
 include(cmake/Dependencies.cmake)
 
 cmake_dependent_option(
@@ -952,6 +980,7 @@ endif()
 include(cmake/Allowlist.cmake)
 
 # ---[ Set link flag, handle additional deps for gcc 4.8 and above
+message(STATUS "${R} (3) Sochin: link flags set ${E}")
 if(CMAKE_COMPILER_IS_GNUCXX AND NOT ANDROID)
   message(
     STATUS
@@ -963,7 +992,9 @@ endif()
 # ---[ Build flags Re-include to override append_cxx_flag_if_supported from
 # third_party/FBGEMM
 include(cmake/public/utils.cmake)
+# 编译选项
 if(NOT MSVC)
+  message(STATUS "${R} (3) Sochin: NOT MSVC ${E}")
   string(APPEND CMAKE_CXX_FLAGS " -O2 -fPIC")
   # Eigen fails to build with some versions, so convert this to a warning
   # Details at http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1459
@@ -1003,6 +1034,7 @@ if(NOT MSVC)
   endif()
 
   # Use ld.gold if available, fall back to ld.bfd (the default ld) if not
+  # 什么是gold 链接
   if(USE_GOLD_LINKER)
     if(USE_DISTRIBUTED AND USE_MPI)
       # Same issue as here with default MPI on Ubuntu
@@ -1029,7 +1061,6 @@ if(NOT MSVC)
       endif()
     endif()
   endif()
-
   append_cxx_flag_if_supported("-Wno-error=pedantic" CMAKE_CXX_FLAGS)
   append_cxx_flag_if_supported("-Wno-error=old-style-cast" CMAKE_CXX_FLAGS)
   append_cxx_flag_if_supported("-Wno-error=inconsistent-missing-override"
@@ -1101,7 +1132,9 @@ else()
   # inconsistent dll linkage
   append_cxx_flag_if_supported("/wd4273" CMAKE_CXX_FLAGS)
 endif()
+# arm64检查
 
+message(STATUS "${R} (3) Sochin: arm64 checking ${E}") 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   include(CheckCSourceCompiles)
   check_c_source_compiles(
@@ -1120,7 +1153,7 @@ int main() {
     string(APPEND CMAKE_CXX_FLAGS " -DMISSING_ARM_VST1")
   endif()
 endif()
-
+# arm64检查
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   include(CheckCSourceCompiles)
   check_c_source_compiles(
@@ -1195,9 +1228,11 @@ if(NOT APPLE AND UNIX)
   list(APPEND Caffe2_DEPENDENCY_LIBS dl)
 endif()
 
+# header 目录
 # Prefix path to Caffe2 headers. If a directory containing installed Caffe2
 # headers was inadvertently added to the list of include directories, prefixing
 # PROJECT_SOURCE_DIR means this source tree always takes precedence.
+# 添加到Caffe2的前面
 include_directories(BEFORE ${PROJECT_SOURCE_DIR})
 
 # Prefix path to generated Caffe2 headers. These need to take precedence over
@@ -1218,7 +1253,10 @@ if(USE_MIMALLOC)
 endif()
 
 # ---[ Main build
+# 添加编译子目录： c10和caffe2
+message(STATUS "${R} (4) Sochin: dealing c10 ${E}") 
 add_subdirectory(c10)
+message(STATUS "${R} (4) Sochin: dealing caffe2 ${E}") 
 add_subdirectory(caffe2)
 
 # ---[ CMake related files Uninistall option.
@@ -1255,6 +1293,7 @@ endif()
 # fail. As a result, we will only provide the targets cmake files for shared lib
 # installation. For more info, read:
 # https://cmake.org/pipermail/cmake/2016-May/063400.html
+message(STATUS "${R}(5) Sochin: build shared libs ${E}")
 if(BUILD_SHARED_LIBS)
   configure_file(${PROJECT_SOURCE_DIR}/cmake/Caffe2Config.cmake.in
                  ${PROJECT_BINARY_DIR}/Caffe2Config.cmake @ONLY)
@@ -1306,6 +1345,7 @@ endif()
 # modules are built. For the binaries, they will be linked to the Caffe2 main
 # libraries, as well as all the modules that are built with Caffe2 (the ones
 # built in the previous Modules section above).
+# 编译二进制
 if(BUILD_BINARY)
   add_subdirectory(binaries)
 endif()
@@ -1319,9 +1359,10 @@ if(BUILD_JNI)
   set(FBJNI_SKIP_TESTS 1)
   add_subdirectory(android/pytorch_android)
 endif()
-
+message(STATUS "${R} Sochin: Summary ${E}")
 include(cmake/Summary.cmake)
 caffe2_print_configuration_summary()
+message(STATUS "${R} Sochin: Summary END ${E}")
 
 if(BUILD_FUNCTORCH)
   add_subdirectory(functorch)

@@ -1814,3 +1814,5 @@ if(MSVC)
   endforeach()
 endif()
 endif()
+
+message(STATUS "${R} (4) Sochin: caffe2 end ${E}") 

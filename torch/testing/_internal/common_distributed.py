@@ -515,6 +515,9 @@ DEFAULT_WORLD_SIZE = 4
 
 
 class MultiProcessTestCase(TestCase):
+    """ 
+        1 + world_size()个进程
+    """
     MAIN_PROCESS_RANK = -1
     # This exit code is used to indicate that the test code had an error and
     # exited abnormally. There are certain tests that might use sys.exit() to
@@ -576,22 +579,22 @@ class MultiProcessTestCase(TestCase):
         # self.id() == e.g. '__main__.TestDistributed.TestAdditive.test_get_rank'
         return self.id().split(".")[-1]
 
-    def _start_processes(self, proc) -> None:
+    def _start_processes(self, proc) -> None:   # 启动进程
         self.processes = []
         for rank in range(int(self.world_size)):
-            parent_conn, child_conn = torch.multiprocessing.Pipe()
+            parent_conn, child_conn = torch.multiprocessing.Pipe() # 父子通信的pipe
             process = proc(
-                target=self.__class__._run,
+                target=self.__class__._run,                        # 类方法run
                 name="process " + str(rank),
-                args=(rank, self._current_test_name(), self.file_name, child_conn),
+                args=(rank, self._current_test_name(), self.file_name, child_conn),     # 子进程名字
             )
             process.start()
             logger.info("Started process %s with pid %s", rank, process.pid)
-            self.pid_to_pipe[process.pid] = parent_conn
+            self.pid_to_pipe[process.pid] = parent_conn                                 # 与子进程通信的pip
             self.processes.append(process)
 
     def _spawn_processes(self) -> None:
-        proc = torch.multiprocessing.get_context("spawn").Process
+        proc = torch.multiprocessing.get_context("spawn").Process   # 创建进程
         self._start_processes(proc)
 
     class Event(Enum):
@@ -638,7 +641,7 @@ class MultiProcessTestCase(TestCase):
     def run_test(self, test_name: str, parent_pipe) -> None:
         # Start event listener thread.
         signal_recv_pipe, signal_send_pipe = torch.multiprocessing.Pipe(duplex=False)
-        event_listener_thread = threading.Thread(
+        event_listener_thread = threading.Thread(                                           # 进程中的事件监听线程
             target=MultiProcessTestCase._event_listener,
             args=(parent_pipe, signal_recv_pipe, self.rank),
             daemon=True,

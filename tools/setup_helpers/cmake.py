@@ -25,10 +25,10 @@ def _mkdir_p(d: str) -> None:
         ) from e
 
 
-# Ninja
+# Ninja： 使用Ninja
 # Use ninja if it is on the PATH. Previous version of PyTorch required the
 # ninja python package, but we no longer use it, so we do not have to import it
-USE_NINJA = not check_negative_env_flag("USE_NINJA") and which("ninja") is not None
+USE_NINJA = not check_negative_env_flag("USE_NINJA") and which("ninja") is not None         # 如果没有禁用USE_NINJA, 且已经安装
 if "CMAKE_GENERATOR" in os.environ:
     USE_NINJA = os.environ["CMAKE_GENERATOR"].lower() == "ninja"
 
@@ -37,7 +37,7 @@ class CMake:
     "Manages cmake."
 
     def __init__(self, build_dir: str = BUILD_DIR) -> None:
-        self._cmake_command = CMake._get_cmake_command()
+        self._cmake_command = CMake._get_cmake_command()    # cmake
         self.build_dir = build_dir
 
     @property
@@ -91,10 +91,10 @@ class CMake:
     def run(self, args: list[str], env: dict[str, str]) -> None:
         "Executes cmake with arguments and an environment."
 
-        command = [self._cmake_command] + args
+        command = [self._cmake_command] + args                                                  # ['cmake', '--build', '.', '--target', 'install', '--config', 'Debug', '--', '-j', '8']
         print(" ".join(command))
         try:
-            check_call(command, cwd=self.build_dir, env=env)
+            check_call(command, cwd=self.build_dir, env=env)                                    # 执行命令
         except (CalledProcessError, KeyboardInterrupt) as e:
             # This error indicates that there was a problem with cmake, the
             # Python backtrace adds no signal here so skip over it by catching
@@ -102,7 +102,7 @@ class CMake:
             sys.exit(1)
 
     @staticmethod
-    def defines(args: list[str], **kwargs: CMakeValue) -> None:
+    def defines(args: list[str], **kwargs: CMakeValue) -> None:     # CMake 定义的k=v
         "Adds definitions to a cmake argument list."
         for key, value in sorted(kwargs.items()):
             if value is not None:
@@ -110,6 +110,7 @@ class CMake:
 
     def get_cmake_cache_variables(self) -> dict[str, CMakeValue]:
         r"""Gets values in CMakeCache.txt into a dictionary.
+            获取CMakeCache.txt中的值到一个目录
         Returns:
           dict: A ``dict`` containing the value of cached CMake variables.
         """
@@ -125,13 +126,15 @@ class CMake:
         my_env: dict[str, str],
         rerun: bool,
     ) -> None:
-        "Runs cmake to generate native build files."
+        """Runs cmake to generate native build files.
+            运行cmake生成编译目录文件
+        """
 
         if rerun and os.path.isfile(self._cmake_cache_file):
-            os.remove(self._cmake_cache_file)
+            os.remove(self._cmake_cache_file)                               # 重新运行cmake， 删除缓存CMakeCache.txt
 
         ninja_build_file = os.path.join(self.build_dir, "build.ninja")
-        if os.path.exists(self._cmake_cache_file) and not (
+        if os.path.exists(self._cmake_cache_file) and not (                 # cmake已经运行了
             USE_NINJA and not os.path.exists(ninja_build_file)
         ):
             # Everything's in place. Do not rerun.
@@ -140,8 +143,8 @@ class CMake:
         args = []
         if USE_NINJA:
             # Avoid conflicts in '-G' and the `CMAKE_GENERATOR`
-            os.environ["CMAKE_GENERATOR"] = "Ninja"
-            args.append("-GNinja")
+            os.environ["CMAKE_GENERATOR"] = "Ninja"                                     # 使用Ninja生成cmake
+            args.append("-GNinja")                                                      # -GNinja, 指定构建系统生成器为Ninja
         elif IS_WINDOWS:
             generator = os.getenv("CMAKE_GENERATOR", "Visual Studio 16 2019")
             supported = ["Visual Studio 16 2019", "Visual Studio 17 2022"]
@@ -174,19 +177,19 @@ class CMake:
                 args.append("-T" + toolset_expr)
 
         base_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))                 # pytorch
         )
-        install_dir = os.path.join(base_dir, "torch")
+        install_dir = os.path.join(base_dir, "torch")                                   # 
 
-        _mkdir_p(install_dir)
-        _mkdir_p(self.build_dir)
+        _mkdir_p(install_dir)                                                           # 安装目录创建 torch
+        _mkdir_p(self.build_dir)                                                        # build编译目录创建
 
         # Store build options that are directly stored in environment variables
-        build_options: dict[str, CMakeValue] = {}
+        build_options: dict[str, CMakeValue] = {}                                       # 环境变量指定的编译选项
 
         # Build options that do not start with "BUILD_", "USE_", or "CMAKE_" and are directly controlled by env vars.
         # This is a dict that maps environment variables to the corresponding variable name in CMake.
-        additional_options = {
+        additional_options = {                                                          # 其他编译选项
             # Key: environment variable name. Value: Corresponding variable name to be passed to CMake. If you are
             # adding a new build option to this block: Consider making these two names identical and adding this option
             # in the block below.
@@ -198,7 +201,7 @@ class CMake:
             {
                 # Build options that have the same environment variable name and CMake variable name and that do not start
                 # with "BUILD_", "USE_", or "CMAKE_". If you are adding a new build option, also make sure you add it to
-                # CMakeLists.txt.
+                # CMakeLists.txt.                   指定新的变现选项，请添加到CMakeLists.txt
                 var: var
                 for var in (
                     "UBSAN_FLAGS",
@@ -304,6 +307,11 @@ class CMake:
             )
             sys.exit(1)
         build_options.update(cmake__options)
+        """ 
+            {'USE_QNNPACK': '0', 'BUILD_TEST': False, 'USE_FBGEMM': '0', 'USE_XNNPACK': '0', 'USE_CUDA': '1', 'USE_MKLDNN': '0',
+             'USE_NNPACK': '0', 'USE_DISTRIBUTED': '0', 'CMAKE_BUILD_TYPE': 'Debug', 'CMAKE_PREFIX_PATH': '/usr/local/lib/python3.10/dist-packages',
+             'BUILD_PYTHON': True, 'USE_NUMPY': True, 'CMAKE_INSTALL_PREFIX': '/root/sochin/dev/pytorch/torch'}
+        """
 
         CMake.defines(
             args,
@@ -314,9 +322,9 @@ class CMake:
 
         expected_wrapper = "/usr/local/opt/ccache/libexec"
         if IS_DARWIN and os.path.exists(expected_wrapper):
-            if "CMAKE_C_COMPILER" not in build_options and "CC" not in os.environ:
+            if "CMAKE_C_COMPILER" not in build_options and "CC" not in os.environ:                  # 指定CC编译器
                 CMake.defines(args, CMAKE_C_COMPILER=f"{expected_wrapper}/gcc")
-            if "CMAKE_CXX_COMPILER" not in build_options and "CXX" not in os.environ:
+            if "CMAKE_CXX_COMPILER" not in build_options and "CXX" not in os.environ:               # 指定CXX编译器
                 CMake.defines(args, CMAKE_CXX_COMPILER=f"{expected_wrapper}/g++")
 
         for env_var_name in my_env:
@@ -339,6 +347,12 @@ class CMake:
         # 1. https://cmake.org/cmake/help/latest/manual/cmake.1.html#synopsis
         # 2. https://stackoverflow.com/a/27169347
         args.append(base_dir)
+        """ 
+            cmake
+            ['-GNinja', '-DBUILD_PYTHON=True', '-DBUILD_TEST=False', '-DCMAKE_BUILD_TYPE=Debug', '-DCMAKE_INSTALL_PREFIX=/root/sochin/dev/pytorch/torch',
+            '-DCMAKE_PREFIX_PATH=/usr/local/lib/python3.10/dist-packages', '-DPython_EXECUTABLE=/usr/local/bin/python', '-DTORCH_BUILD_VERSION=2.5.0a0+git1e039c3',
+            '-DUSE_CUDA=1', '-DUSE_DISTRIBUTED=0', '-DUSE_FBGEMM=0', '-DUSE_MKLDNN=0', '-DUSE_NNPACK=0', '-DUSE_NUMPY=True', '-DUSE_QNNPACK=0', '-DUSE_XNNPACK=0']
+        """
         self.run(args, env=my_env)
 
     def build(self, my_env: dict[str, str]) -> None:
@@ -387,5 +401,5 @@ class CMake:
                 # We are likely using msbuild here
                 build_args += [f"/p:CL_MPCount={max_jobs}"]
             else:
-                build_args += ["-j", max_jobs]
+                build_args += ["-j", max_jobs]  # ['--build', '.', '--target', 'install', '--config', 'Debug', '--', '-j', '8']
         self.run(build_args, my_env)

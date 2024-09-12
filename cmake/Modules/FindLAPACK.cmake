@@ -19,6 +19,7 @@ SET(LAPACK_LIBRARIES)
 SET(LAPACK_INFO)
 
 IF(LAPACK_FIND_QUIETLY OR NOT LAPACK_FIND_REQUIRED)
+  message(STATUS "${Y} Sochin: LAPACK BLAS find ${E}")
   FIND_PACKAGE(BLAS)
 ELSE(LAPACK_FIND_QUIETLY OR NOT LAPACK_FIND_REQUIRED)
   FIND_PACKAGE(BLAS REQUIRED)
@@ -82,7 +83,7 @@ macro(Check_Lapack_Libraries LIBRARIES _prefix _name _flags _list _blas)
   endif(NOT _libraries_work)
 endmacro(Check_Lapack_Libraries)
 
-
+message(STATUS "${Y} Sochin: BLAS_FOUND ${E}")
 if(BLAS_FOUND)
 
   # Intel MKL

@@ -17,7 +17,7 @@ def convert_cmake_value_to_python_value(
     cmake_type: str                     # 类型
 ) -> CMakeValue:
     r"""Convert a CMake value in a string form to a Python value.
-
+            转换一个字符串格式的值为python值
     Args:
       cmake_value (string): The CMake value in a string form (e.g., "ON", "OFF", "1").
       cmake_type (string): The CMake type of :attr:`cmake_value`.
@@ -55,15 +55,16 @@ def get_cmake_cache_variables_from_file(
     """
 
     results = {}
-    for i, line in enumerate(cmake_cache_file, 1):
+    for i, line in enumerate(cmake_cache_file, 1):      # 从文件第一行开始迭代
         line = line.strip()
-        if not line or line.startswith(("#", "//")):
+        if not line or line.startswith(("#", "//")):    # 过滤注释
             # Blank or comment line, skip
             continue
 
         # Almost any character can be part of variable name and value. As a practical matter, we assume the type must be
         # valid if it were a C variable name. It should match the following kinds of strings:
-        #
+        # 几乎任何字符都可以作为变量名和值的一部分。作为一个实际问题，我们假定类型如果是C变量名则必须是有效的
+        # 则有效。它应该匹配以下类型的字符串
         #   USE_CUDA:BOOL=ON
         #   "USE_CUDA":BOOL=ON
         #   USE_CUDA=ON
@@ -75,7 +76,7 @@ def get_cmake_cache_variables_from_file(
         )
         if matched is None:  # Illegal line
             raise ValueError(f"Unexpected line {i} in {repr(cmake_cache_file)}: {line}")
-        _, variable, type_, value = matched.groups()
+        _, variable, type_, value = matched.groups()                                            # 匹配拿到的变量名， 类型和值
         if type_ is None:
             type_ = ""
         if type_.upper() in ("INTERNAL", "STATIC"):

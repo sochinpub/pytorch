@@ -62,10 +62,14 @@ torch.backends.cuda.matmul.allow_tf32 = False
 
 
 def gpus_for_rank(world_size):
-    """Multigpu tests are designed to simulate the multi nodes with multi
+    """
+    多GPU测试需要模拟多节点多GPU，NCCL Backend需要每个进程中相等数据的GPU。
+    因此这里，在单节点上模拟多节点（每个进程使用相同数目GPU的一个子集）
+    Multigpu tests are designed to simulate the multi nodes with multi
     GPUs on each node. Nccl backend requires equal #GPUs in each process.
     On a single node, all visible GPUs are evenly
     divided to subsets, each process only uses a subset.
+    
     """
     visible_devices = list(range(torch.cuda.device_count()))
     gpus_per_process = torch.cuda.device_count() // world_size
@@ -87,7 +91,7 @@ class AbstractTimeoutTest:
                 rank=0,
                 timeout=timedelta(seconds=1),
             )
-            default_store = c10d._get_default_store()
+            default_store = c10d._get_default_store()   # 这个store是什么 ??? 存储在哪里 ?
             tik = time.time()
             with self.assertRaisesRegex(RuntimeError, "Timeout"):
                 default_store.get("nonexistent key")
@@ -100,7 +104,7 @@ class AbstractTimeoutTest:
             c2p.append(e)
 
     def _init_methods(self):
-        f = tempfile.NamedTemporaryFile(delete=False)
+        f = tempfile.NamedTemporaryFile(delete=False) # 通过临时文件
         if sys.platform == "win32":
             yield "file:///{}".format(f.name.replace("\\", "/"))
             f.close()
@@ -110,10 +114,10 @@ class AbstractTimeoutTest:
             yield "tcp://127.0.0.1:%d" % common.find_free_port()
 
     def _test_default_store_timeout(self, backend):
-        for init_method in self._init_methods():
+        for init_method in self._init_methods():    # 文件方式； TCP方式
             c2p = []
             t = threading.Thread(
-                target=self._test_store_timeout, args=(backend, init_method, c2p)
+                target=self._test_store_timeout, args=(backend, init_method, c2p)   # 线程模拟
             )
             t.daemon = True
             t.start()
@@ -139,9 +143,9 @@ class TimeoutTest(TestCase):
         def thread_work(timeout, init_type, world_size, rank, error_list):
             # we need to create a separate store just for the store barrier test
             if init_type == "file":
-                barrier_store = dist.FileStore(f.name)
+                barrier_store = dist.FileStore(f.name)              # file store
             elif init_type == "tcp":
-                barrier_store = dist.TCPStore(
+                barrier_store = dist.TCPStore(                      # TCP Store
                     "localhost",
                     port,
                     world_size,
@@ -149,7 +153,7 @@ class TimeoutTest(TestCase):
                     wait_for_workers=False,
                 )
             elif init_type == "hash":
-                barrier_store = dist.HashStore()
+                barrier_store = dist.HashStore()                    # hash store
             try:
                 # 1 missing worker will cause it to timeout
                 if rank != world_size - 1:
@@ -165,10 +169,10 @@ class TimeoutTest(TestCase):
                 self.assertTrue(isinstance(e, torch.distributed.DistError))
                 error_list.append(e)
 
-        world_size = 4
+        world_size = 4          # 4个进程
         error_list = []
         threads = []
-        for init_type in ["file", "tcp", "hash"]:
+        for init_type in ["file", "tcp", "hash"]:   # 迭代三种初始化方式
             for rank in range(world_size):
                 t = threading.Thread(
                     target=thread_work,
@@ -206,7 +210,7 @@ class Net(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc1(x))   # fc1 -> relu -> fc2 -> relu -> fc3 -> softmax
         x = self.relu(self.fc2(x))
         x = self.fc3(x)
         return F.softmax(x, dim=1)
@@ -224,6 +228,10 @@ class DoubleGpuNet(nn.Module):
         ).to(gpus[0])
 
     def forward(self, x):
+        """ 
+            GPU0: fc1 -> relu ->                        -> softmax
+            GPU1                fc2 -> relu -> fc3
+        """
         dev0 = self.fc1.weight.device
         dev1 = self.fc2.weight.device
         x = self.relu(self.fc1(x.to(dev0)))
@@ -245,6 +253,12 @@ class QuadraGpuNet(nn.Module):
         ).to(gpus[0])
 
     def forward(self, x):
+        """ 
+            GPU0:   fc1 -> relu                                    -> softmax
+            GPU1:                fc2 -> relu
+            GPU2:                             fc3 -> relu
+            GPU3:                                           fc4  
+        """
         dev0 = self.fc1.weight.device
         dev1 = self.fc2.weight.device
         dev2 = self.fc3.weight.device
@@ -278,6 +292,12 @@ class ConvNet(nn.Module):
         )
 
     def forward(self, x):
+        """ 
+            GPU0:   conv0 ->
+            GPU1:               conv1 ->
+            GPU2:                           conv2 ->
+            GPU3:                                       conv3->
+        """
         x = x.to(self.dtypes[0])
         # Could say
         # x = self.conv0(x).to(device=self.conv1.weight.device, dtype=self.dtypes[1])
@@ -1549,14 +1569,20 @@ class CommTest(AbstractCommTest, MultiProcessTestCase):
 
 
 class DummyWork(dist._Work):
+    """ 
+        假的异步通信
+    """
     def wait(self, timeout=5.0):
         if torch.cuda.is_available():
-            torch.cuda.current_stream().synchronize()
+            torch.cuda.current_stream().synchronize() # 使用cuda流同步来wait
         return True
 
 
 class DummyProcessGroup(dist.ProcessGroup):
-    def getBackendName(self):
+    """ 
+        假的ProcessGroup
+    """
+    def getBackendName(self): # 重载过的 name
         return "Dummy"
 
     def allgather(self, output_tensor_lists, input_tensor_list, opts=None):
@@ -1621,6 +1647,9 @@ class DummyProcessGroup(dist.ProcessGroup):
 
 
 class PythonProcessGroupExtensionTest(MultiProcessTestCase):
+    """ 
+        进程组扩展测试
+    """
     def setUp(self):
         super().setUp()
         self._spawn_processes()
@@ -1727,6 +1756,7 @@ class PythonProcessGroupExtensionTest(MultiProcessTestCase):
 
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "6789"
+        # dummy Backend
         dist.init_process_group("dummy", rank=self.rank, world_size=self.world_size)
 
         # test all_gather

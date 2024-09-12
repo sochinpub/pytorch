@@ -1,4 +1,5 @@
 if(NOT __NCCL_INCLUDED)
+  message(STATUS "${Y} Sochin: nccl find ${E}")
   set(__NCCL_INCLUDED TRUE)
 
   if(USE_SYSTEM_NCCL)
@@ -10,6 +11,7 @@ if(NOT __NCCL_INCLUDED)
       target_include_directories(__caffe2_nccl INTERFACE ${NCCL_INCLUDE_DIRS})
     endif()
   else()
+    message(STATUS "${Y} Sochin: nccl USE_SYSTEM_NCCL False ${E}")
     torch_cuda_get_nvcc_gencode_flag(NVCC_GENCODE)
     string(REPLACE "-gencode;" "-gencode=" NVCC_GENCODE "${NVCC_GENCODE}")
     # this second replacement is needed when there are multiple archs
@@ -67,7 +69,7 @@ if(NOT __NCCL_INCLUDED)
       set(__NCCL_LIBRARY_DEP nccl_external)
       set(NCCL_LIBRARIES ${__NCCL_BUILD_DIR}/lib/libnccl_static.a)
     elseif((${OBJCOPY_VERSION_MAJOR} GREATER 2) OR ((${OBJCOPY_VERSION_MAJOR} EQUAL 2) AND (${OBJCOPY_VERSION_MINOR} GREATER 27)))
-      message(WARNING "Enabling NCCL library slimming")
+      message(WARNING "Sochin: Enabling NCCL library slimming")
       add_custom_command(
         OUTPUT "${__NCCL_BUILD_DIR}/lib/libnccl_slim_static.a"
         DEPENDS nccl_external
@@ -83,6 +85,7 @@ if(NOT __NCCL_INCLUDED)
         WORKING_DIRECTORY "${__NCCL_BUILD_DIR}"
         COMMENT "Slimming NCCL"
         )
+      message(WARNING "Sochin: Enabling NCCL library slimming end")
       add_custom_target(nccl_slim_external DEPENDS "${__NCCL_BUILD_DIR}/lib/libnccl_slim_static.a")
       set(__NCCL_LIBRARY_DEP nccl_slim_external)
       set(NCCL_LIBRARIES ${__NCCL_BUILD_DIR}/lib/libnccl_slim_static.a)

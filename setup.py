@@ -200,7 +200,7 @@
 
 import os
 import sys
-
+import pdb
 
 if sys.platform == "win32" and sys.maxsize.bit_length() == 31:
     print(
@@ -269,6 +269,7 @@ if BUILD_LIBTORCH_WHL:
 # 查找 torch 包路径
 if BUILD_PYTHON_ONLY:
     os.environ["BUILD_LIBTORCHLESS"] = "ON"
+    # torch路径/mnt/sdb/sochin/dev/pytorch/torch
     os.environ["LIBTORCH_LIB_PATH"] = f"{_get_package_path('torch')}/lib"
 
 ################################################################################
@@ -284,23 +285,23 @@ RERUN_CMAKE = False
 CMAKE_ONLY = False
 filtered_args = []
 for i, arg in enumerate(sys.argv):
-    if arg == "--cmake":
+    if arg == "--cmake":                            ## 重跑cmake
         RERUN_CMAKE = True
         continue
-    if arg == "--cmake-only":
+    if arg == "--cmake-only":                       ## 只跑cmake
         # Stop once cmake terminates. Leave users a chance to adjust build
         # options.
         CMAKE_ONLY = True
         continue
-    if arg == "rebuild" or arg == "build":
+    if arg == "rebuild" or arg == "build":          ## 
         arg = "build"  # rebuild is gone, make it build
         EMIT_BUILD_WARNING = True
     if arg == "--":
-        filtered_args += sys.argv[i:]
+        filtered_args += sys.argv[i:]               ## 选项过滤
         break
     if arg == "-q" or arg == "--quiet":
         VERBOSE_SCRIPT = False
-    if arg in ["clean", "egg_info", "sdist"]:
+    if arg in ["clean", "egg_info", "sdist"]:       # clean, 编译egg包， 编译sdist
         RUN_BUILD_DEPS = False
     filtered_args.append(arg)
 sys.argv = filtered_args
@@ -321,8 +322,8 @@ else:
 # Constant known variables used throughout this file
 cwd = os.path.dirname(os.path.abspath(__file__))    # 当前目录
 lib_path = os.path.join(cwd, "torch", "lib")        # lib的目录 torch/lib
-third_party_path = os.path.join(cwd, "third_party")
-caffe2_build_dir = os.path.join(cwd, "build")           # caffe2 编译目录 build
+third_party_path = os.path.join(cwd, "third_party") # 第三方库目录
+caffe2_build_dir = os.path.join(cwd, "build")       # caffe2 编译目录 build
 
 # CMAKE: full path to python library
 if IS_WINDOWS:
@@ -330,7 +331,7 @@ if IS_WINDOWS:
         sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
     )
     # Fix virtualenv builds
-    if not os.path.exists(cmake_python_library):
+    if not os.path.exists(cmake_python_library):                            # cmake python库路径： /usr/lib/x86_64-linux-gnu/libpython3.10.so.1.0
         cmake_python_library = "{}/libs/python{}.lib".format(
             sys.base_prefix, sysconfig.get_config_var("VERSION")
         )
@@ -351,15 +352,16 @@ if BUILD_LIBTORCH_WHL:
     package_name = LIBTORCH_PKG_NAME
 
 
-package_type = os.getenv("PACKAGE_TYPE", "wheel")
-version = get_torch_version()
+package_type = os.getenv("PACKAGE_TYPE", "wheel")                       ## 编译出包类型，默认编译wheel包
+version = get_torch_version()                                           ## torch版本
 report(f"Building wheel {package_name}-{version}")
 
-cmake = CMake()
+cmake = CMake()             # CMake对象是用来做什么的 ???
 
 
 def get_submodule_folders(): # submodule的父目录
     git_modules_path = os.path.join(cwd, ".gitmodules")
+    # 默认的模块路径：gloo模块， cpuinfo模块，onnx模块，foxi模块，QNNPACK模块，fbgemm模块，cutlass模块
     default_modules_path = [
         os.path.join(third_party_path, name)
         for name in [
@@ -372,9 +374,9 @@ def get_submodule_folders(): # submodule的父目录
             "cutlass",
         ]
     ]
-    if not os.path.exists(git_modules_path):
+    if not os.path.exists(git_modules_path):            # 非git仓库，认为第三方依赖库已经在本地
         return default_modules_path
-    with open(git_modules_path) as f:
+    with open(git_modules_path) as f:                   # 读取.gitsubmodules文件
         return [
             os.path.join(cwd, line.split("=", 1)[1].strip())            # third_party/cpp-httplib
             for line in f
@@ -388,8 +390,11 @@ def get_submodule_folders(): # submodule的父目录
 
 
 def check_submodules():
+    """ 
+
+    """
     def check_for_files(folder, files):                                         # 检查子目录的某个文件是否存在
-        if not any(os.path.exists(os.path.join(folder, f)) for f in files):
+        if not any(os.path.exists(os.path.join(folder, f)) for f in files):     # not any任意不存在，失败退出
             report("Could not find any of {} in {}".format(", ".join(files), folder))
             report("Did you run 'git submodule update --init --recursive'?")
             sys.exit(1)
@@ -399,11 +404,11 @@ def check_submodules():
             os.path.isdir(folder) and len(os.listdir(folder)) == 0
         )
 
-    if bool(os.getenv("USE_SYSTEM_LIBS", False)):
+    if bool(os.getenv("USE_SYSTEM_LIBS", False)):   # 使用系统库进行编译，则直接成功返回
         return
     folders = get_submodule_folders()                                           # 子模块的目录列表
     # If none of the submodule folders exists, try to initialize them
-    if all(not_exists_or_empty(folder) for folder in folders):
+    if all(not_exists_or_empty(folder) for folder in folders):  # 只有当依赖的第三方库目录都不存在时，执行git submodule update
         try:
             print(" --- Trying to initialize submodules")
             start = time.time()
@@ -416,7 +421,7 @@ def check_submodules():
             print(" --- Submodule initalization failed")
             print("Please run:\n\tgit submodule update --init --recursive")
             sys.exit(1)
-    for folder in folders:
+    for folder in folders:          # 当不存在任何以下文件时，直接退出
         check_for_files(
             folder,
             [
@@ -429,11 +434,11 @@ def check_submodules():
             ],
         )
     check_for_files(
-        os.path.join(third_party_path, "fbgemm", "third_party", "asmjit"),
+        os.path.join(third_party_path, "fbgemm", "third_party", "asmjit"),          # 这个为什么要单独检查 ？ 项目链式依赖
         ["CMakeLists.txt"],
     )
     check_for_files(
-        os.path.join(third_party_path, "onnx", "third_party", "benchmark"),
+        os.path.join(third_party_path, "onnx", "third_party", "benchmark"),         # 项目链式依赖
         ["CMakeLists.txt"],
     )
 
@@ -441,11 +446,11 @@ def check_submodules():
 # Windows has very bad support for symbolic links.
 # Instead of using symlinks, we're going to copy files over
 def mirror_files_into_torchgen():
-    # (new_path, orig_path)
+    # (new_path, orig_path)                                                                 # 格式 （新路径， 旧路径）
     # Directories are OK and are recursively mirrored.
     paths = [
         (
-            "torchgen/packaged/ATen/native/native_functions.yaml",
+            "torchgen/packaged/ATen/native/native_functions.yaml",                          # native函数的代码生成yaml
             "aten/src/ATen/native/native_functions.yaml",
         ),
         ("torchgen/packaged/ATen/native/tags.yaml", "aten/src/ATen/native/tags.yaml"),
@@ -456,17 +461,17 @@ def mirror_files_into_torchgen():
     for new_path, orig_path in paths:
         # Create the dirs involved in new_path if they don't exist
         if not os.path.exists(new_path):
-            os.makedirs(os.path.dirname(new_path), exist_ok=True)
+            os.makedirs(os.path.dirname(new_path), exist_ok=True)                           # 创建新路径
 
         # Copy the files from the orig location to the new location
         if os.path.isfile(orig_path):
-            shutil.copyfile(orig_path, new_path)
+            shutil.copyfile(orig_path, new_path)                                            # 拷贝文件到新路径
             continue
         if os.path.isdir(orig_path):
             if os.path.exists(new_path):
                 # copytree fails if the tree exists already, so remove it.
                 shutil.rmtree(new_path)
-            shutil.copytree(orig_path, new_path)
+            shutil.copytree(orig_path, new_path)                                            # 拷贝整个目录
             continue
         raise RuntimeError("Check the file paths in `mirror_files_into_torchgen()`")
 
@@ -477,17 +482,18 @@ def build_deps():   # setup 运行前
 
     check_submodules()                          # 检查子模块
     check_pydep("yaml", "pyyaml")               # 检查 yaml 依赖
-    build_python = not BUILD_LIBTORCH_WHL
+    build_python = not BUILD_LIBTORCH_WHL       # 不编译libtorch wheel包时，就编译python
     # 编译caffe2
-    build_caffe2(
-        version=version,
-        cmake_python_library=cmake_python_library,
-        build_python=build_python,
-        rerun_cmake=RERUN_CMAKE,
-        cmake_only=CMAKE_ONLY,
-        cmake=cmake,
+    build_caffe2(                               # 
+        version=version,                            # 
+        cmake_python_library=cmake_python_library,  # /usr/lib/x86_64-linux-gnu/libpython3.10.so.1.0
+        build_python=build_python,                  #
+        rerun_cmake=RERUN_CMAKE,                    # False
+        cmake_only=CMAKE_ONLY,                      # False
+        cmake=cmake,                                # cmake 对象
     )
-    # 只编译caffe2
+    # 只允许cmake生成cmake cache
+    # 使用cmake图形化界面配置 cmake进行编译
     if CMAKE_ONLY:
         report(
             'Finished running cmake. Run "ccmake build" or '
@@ -512,7 +518,7 @@ def build_deps():   # setup 运行前
     for sym_file, orig_file in zip(sym_files, orig_files):
         same = False
         if os.path.exists(sym_file):
-            if filecmp.cmp(sym_file, orig_file):
+            if filecmp.cmp(sym_file, orig_file):            # filecmp.cmp进行文件比对
                 same = True
             else:
                 os.remove(sym_file)                         # 移除符号链接文件
@@ -523,16 +529,16 @@ def build_deps():   # setup 运行前
 ################################################################################
 # Building dependent libraries 编译依赖库
 ################################################################################
-
+# 相当于宏定义的打印字符串
 missing_pydep = """
 Missing build dependency: Unable to `import {importname}`.
 Please install it via `conda install {module}` or `pip install {module}`
 """.strip()
 
 
-def check_pydep(importname, module):    # 检查依赖
+def check_pydep(importname, module):                        # 检查依赖 比如 yaml, pyyaml
     try:
-        importlib.import_module(importname)
+        importlib.import_module(importname)                 # 导入yaml包
     except ImportError as e:
         raise RuntimeError(
             missing_pydep.format(importname=importname, module=module)
@@ -540,7 +546,7 @@ def check_pydep(importname, module):    # 检查依赖
 
 
 class build_ext(setuptools.command.build_ext.build_ext):
-    """ 编译扩展
+    """ 编译pytorch扩展
 
     Args:
         setuptools (_type_): _description_
@@ -951,7 +957,7 @@ def get_cmake_cache_vars():
 
 def configure_extension_build():
     r"""Configures extension build options according to system environment and user's choice.
-
+        根据系统环境和用户选择， 配置扩展编译选项
     Returns:
       The input to parameters ext_modules, cmdclass, packages, and entry_points as required in setuptools.setup.
     """
@@ -975,7 +981,7 @@ def configure_extension_build():
         extra_compile_args = ["/MD", "/FS", "/EHsc"]
     else:
         extra_link_args = []
-        extra_compile_args = [
+        extra_compile_args = [                              # 编译选项
             "-Wall",
             "-Wextra",
             "-Wno-strict-overflow",
@@ -988,27 +994,27 @@ def configure_extension_build():
             "-fno-strict-aliasing",
         ]
 
-    library_dirs.append(lib_path)
+    library_dirs.append(lib_path)                           # torch/lib
 
     main_compile_args = []
-    main_libraries = ["torch_python"]
+    main_libraries = ["torch_python"]                       # 编译主库 libtorch_python.so
 
     main_link_args = []
-    main_sources = ["torch/csrc/stub.c"]
+    main_sources = ["torch/csrc/stub.c"]                    # 这个做什么的 ???
 
     if BUILD_LIBTORCH_WHL:
         main_libraries = ["torch"]
         main_sources = []
 
-    if build_type.is_debug():
+    if build_type.is_debug():                               # 编译Debug版本
         if IS_WINDOWS:
             extra_compile_args.append("/Z7")
             extra_link_args.append("/DEBUG:FULL")
         else:
-            extra_compile_args += ["-O0", "-g"]
+            extra_compile_args += ["-O0", "-g"]             # Debug版本是O0编译的
             extra_link_args += ["-O0", "-g"]
 
-    if build_type.is_rel_with_deb_info():
+    if build_type.is_rel_with_deb_info():                   # 编译带Debug信息的Release版本
         if IS_WINDOWS:
             extra_compile_args.append("/Z7")
             extra_link_args.append("/DEBUG:FULL")
@@ -1018,6 +1024,7 @@ def configure_extension_build():
 
     # pypi cuda package that requires installation of cuda runtime, cudnn and cublas
     # should be included in all wheels uploaded to pypi
+    # pypi的cuda包需要安装cuda runtime/cudnn/cublas
     pytorch_extra_install_requirements = os.getenv(
         "PYTORCH_EXTRA_INSTALL_REQUIREMENTS", ""
     )
@@ -1049,6 +1056,9 @@ def configure_extension_build():
             extra_link_args += ["-arch", macos_target_arch]
 
     def make_relative_rpath_args(path):
+        """ 
+            rpath注入
+        """
         if IS_DARWIN:
             return ["-Wl,-rpath,@loader_path/" + path]
         elif IS_WINDOWS:
@@ -1083,7 +1093,7 @@ def configure_extension_build():
 
     # These extensions are built by cmake and copied manually in build_extensions()
     # inside the build_ext implementation
-    if cmake_cache_vars["BUILD_CAFFE2"]:
+    if cmake_cache_vars["BUILD_CAFFE2"]:                # 编译caff2扩展
         extensions.append(
             Extension(name="caffe2.python.caffe2_pybind11_state", sources=[]),
         )
@@ -1100,7 +1110,7 @@ def configure_extension_build():
             Extension(name="functorch._C", sources=[]),
         )
 
-    cmdclass = {
+    cmdclass = {                                                        # 编译命令对应的类
         "bdist_wheel": wheel_concatenate,
         "build_ext": build_ext,
         "clean": clean,
@@ -1126,10 +1136,10 @@ build_update_message = """
     It is no longer necessary to use the 'build' or 'rebuild' targets
 
     To install:
-      $ python setup.py install
-    To develop locally:
+      $ python setup.py install                                                 # 安装
+    To develop locally:                                                         # 编译开发
       $ python setup.py develop
-    To force cmake to re-generate native build files (off by default):
+    To force cmake to re-generate native build files (off by default):          # 强制重生成 cmake
       $ python setup.py develop --cmake
 """
 
@@ -1149,7 +1159,7 @@ def main():
         raise RuntimeError(
             "Conflict: 'BUILD_LIBTORCH_WHL' and 'BUILD_PYTHON_ONLY' can't both be 1. Set one to 0 and rerun."
         )
-    install_requires = [ # 安装的需要
+    install_requires = [ # 编译的 预置安装包条件
         "filelock",
         "typing-extensions>=4.8.0",
         "sympy",
@@ -1161,9 +1171,9 @@ def main():
     if sys.version_info >= (3, 12, 0): # setuptools版本检查
         install_requires.append("setuptools")
 
-    if BUILD_PYTHON_ONLY:
+    if BUILD_PYTHON_ONLY:   # 只编译 python 时， 需要安装torch
         install_requires.append(f"{LIBTORCH_PKG_NAME}=={get_torch_version()}") # libtorch的版本需要
-
+    # 编译优先级
     use_prioritized_text = str(os.getenv("USE_PRIORITIZED_TEXT_FOR_LD", ""))
     if (
         use_prioritized_text == ""
@@ -1178,12 +1188,13 @@ def main():
         )
     if use_prioritized_text == "1" or use_prioritized_text == "True":
         gen_linker_script(
-            filein="cmake/prioritized_text.txt", fout="cmake/linker_script.ld" # 这是什么 ???
+            filein="cmake/prioritized_text.txt", fout="cmake/linker_script.ld" # Sochin: 这是什么 ???
         )
         linker_script_path = os.path.abspath("cmake/linker_script.ld")
-        os.environ["LDFLAGS"] = os.getenv("LDFLAGS", "") + f" -T{linker_script_path}"
+        # -T
+        os.environ["LDFLAGS"] = os.getenv("LDFLAGS", "") + f" -T{linker_script_path}"       # 使用链接脚本，教书将输入文件的sections 映射到输出文件的内存布局
         os.environ["CFLAGS"] = (
-            os.getenv("CFLAGS", "") + " -ffunction-sections -fdata-sections"
+            os.getenv("CFLAGS", "") + " -ffunction-sections -fdata-sections"                # 这些编译CFLAGS的含义
         )
         os.environ["CXXFLAGS"] = (
             os.getenv("CXXFLAGS", "") + " -ffunction-sections -fdata-sections"
@@ -1192,25 +1203,25 @@ def main():
     # Parse the command line and check the arguments before we proceed with
     # building deps and setup. We need to set values so `--help` works.
     dist = Distribution()
-    dist.script_name = os.path.basename(sys.argv[0])
-    dist.script_args = sys.argv[1:] # 后面的参数
+    dist.script_name = os.path.basename(sys.argv[0])                        ## setup.py
+    dist.script_args = sys.argv[1:]                                         # 后面的参数
     try:
         dist.parse_command_line()
     except setuptools.distutils.errors.DistutilsArgError as e:
         print(e)
         sys.exit(1)
 
-    mirror_files_into_torchgen() # Windows下文件拷贝
-    if RUN_BUILD_DEPS:      # 编译依赖
+    mirror_files_into_torchgen()    # Windows下文件拷贝到torchgen目录
+    if RUN_BUILD_DEPS:              # 编译依赖 1） 编译caffe
         build_deps()
 
     (
         extensions,
-        cmdclass,
+        cmdclass,                                               # 比较重要
         packages,
         entry_points,
         extra_install_requires,
-    ) = configure_extension_build()
+    ) = configure_extension_build()                             # 2）扩展性编译的配置
     install_requires += extra_install_requires
 
     extras_require = {
@@ -1225,34 +1236,34 @@ def main():
     version_range_max = max(sys.version_info[1], 12) + 1
     torch_package_data = [ # libtorch 包的打包文件列表
         "py.typed",
-        "bin/*",
-        "test/*",
-        "*.pyi",
-        "_C/*.pyi",
-        "cuda/*.pyi",
-        "fx/*.pyi",
-        "optim/*.pyi",
-        "autograd/*.pyi",
-        "jit/*.pyi",
-        "nn/*.pyi",
-        "nn/modules/*.pyi",
-        "nn/parallel/*.pyi",
-        "utils/data/*.pyi",
-        "utils/data/datapipes/*.pyi",
-        "lib/*.pdb",
-        "lib/*shm*",
-        "lib/torch_shm_manager",
-        "lib/*.h",
+        "bin/*",                                                            # 所有生成的二进制
+        "test/*",                                                           # 所有Python前端测试
+        "*.pyi",                                                            # 当前目录的Py 接口文件
+        "_C/*.pyi",                                                         # torch后端的python 接口文件
+        "cuda/*.pyi",                                                       # cuda py接口文件
+        "fx/*.pyi",                                                         # Sochin: 什么是fx
+        "optim/*.pyi",                                                      # 优化器接口文件
+        "autograd/*.pyi",                                                   # 自动微分接口文件
+        "jit/*.pyi",                                                        # 即使编译接口文件
+        "nn/*.pyi",                                                         # nn接口文件
+        "nn/modules/*.pyi",                                                 # nn.modules接口文件
+        "nn/parallel/*.pyi",                                                # nn.parallel接口文件
+        "utils/data/*.pyi",                                                 # utils.data python接口文件
+        "utils/data/datapipes/*.pyi",                                       # utils.data.datapipes 接口文件
+        "lib/*.pdb",                                                        # lib下的google protobuf 文件
+        "lib/*shm*",                                                        # lib下shm
+        "lib/torch_shm_manager",                                            # lib下torch shm manager 
+        "lib/*.h",                                                          # C lib头文件
         "include/*.h",
-        "include/ATen/*.h",
-        "include/ATen/cpu/*.h",
+        "include/ATen/*.h",                                                 # Aten所有头文件
+        "include/ATen/cpu/*.h",                                             # Aten cpu
         "include/ATen/cpu/vec/vec256/*.h",
         "include/ATen/cpu/vec/vec256/vsx/*.h",
         "include/ATen/cpu/vec/vec256/zarch/*.h",
         "include/ATen/cpu/vec/vec512/*.h",
         "include/ATen/cpu/vec/*.h",
         "include/ATen/core/*.h",
-        "include/ATen/cuda/*.cuh",
+        "include/ATen/cuda/*.cuh",                                          # Aten cuda
         "include/ATen/cuda/*.h",
         "include/ATen/cuda/detail/*.cuh",
         "include/ATen/cuda/detail/*.h",
@@ -1260,17 +1271,17 @@ def main():
         "include/ATen/cudnn/*.h",
         "include/ATen/functorch/*.h",
         "include/ATen/ops/*.h",
-        "include/ATen/hip/*.cuh",
+        "include/ATen/hip/*.cuh",                                           # Aten hip
         "include/ATen/hip/*.h",
         "include/ATen/hip/detail/*.cuh",
         "include/ATen/hip/detail/*.h",
         "include/ATen/hip/impl/*.h",
         "include/ATen/hip/tunable/*.h",
-        "include/ATen/mps/*.h",
+        "include/ATen/mps/*.h",                                             # Aten mps
         "include/ATen/miopen/*.h",
-        "include/ATen/detail/*.h",
+        "include/ATen/detail/*.h",                                          # Aten detail
         "include/ATen/native/*.h",
-        "include/ATen/native/cpu/*.h",
+        "include/ATen/native/cpu/*.h",                                      # Aten native
         "include/ATen/native/cuda/*.h",
         "include/ATen/native/cuda/*.cuh",
         "include/ATen/native/hip/*.h",
@@ -1285,8 +1296,8 @@ def main():
         "include/ATen/quantized/*.h",
         "include/ATen/xpu/*.h",
         "include/ATen/xpu/detail/*.h",
-        "include/caffe2/serialize/*.h",
-        "include/c10/*.h",
+        "include/caffe2/serialize/*.h",                                     # caffe头文件
+        "include/c10/*.h",                                                  # c10头文件
         "include/c10/macros/*.h",
         "include/c10/core/*.h",
         "include/ATen/core/boxing/*.h",
@@ -1303,7 +1314,7 @@ def main():
         "include/c10/xpu/impl/*.h",
         "include/torch/*.h",
         "include/torch/csrc/*.h",
-        "include/torch/csrc/api/include/torch/*.h",
+        "include/torch/csrc/api/include/torch/*.h",                             # torch API C++ 后端头文件
         "include/torch/csrc/api/include/torch/data/*.h",
         "include/torch/csrc/api/include/torch/data/dataloader/*.h",
         "include/torch/csrc/api/include/torch/data/datasets/*.h",
@@ -1373,10 +1384,10 @@ def main():
         "include/torch/csrc/lazy/python/python_util.h",
         "include/torch/csrc/lazy/ts_backend/*.h",
         "include/torch/csrc/xpu/*.h",
-        "include/pybind11/*.h",
+        "include/pybind11/*.h",                                                 # pybind11的头文件
         "include/pybind11/detail/*.h",
         "include/pybind11/eigen/*.h",
-        "include/TH/*.h*",
+        "include/TH/*.h*",                                                      # python TH/THC/THH
         "include/TH/generic/*.h*",
         "include/THC/*.cuh",
         "include/THC/*.h*",
@@ -1422,7 +1433,7 @@ def main():
                 "lib/*.lib",
             ]
         )
-    if get_cmake_cache_vars()["BUILD_CAFFE2"]: # 打包caffe2
+    if get_cmake_cache_vars()["BUILD_CAFFE2"]:  # 打包caffe2
         torch_package_data.extend(
             [
                 "include/caffe2/**/*.h",
@@ -1487,7 +1498,7 @@ def main():
         long_description=long_description,
         long_description_content_type="text/markdown",
         ext_modules=extensions,
-        cmdclass=cmdclass,
+        cmdclass=cmdclass,                                                  # 执行的命令
         packages=packages,
         entry_points=entry_points,
         install_requires=install_requires,

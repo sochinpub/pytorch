@@ -128,7 +128,7 @@ __all__ = [
 
 _MPI_AVAILABLE = True
 _NCCL_AVAILABLE = True
-_GLOO_AVAILABLE = True
+_GLOO_AVAILABLE = True      # 默认支持的
 _UCC_AVAILABLE = True
 
 _pickler = pickle.Pickler
@@ -243,7 +243,7 @@ class Backend(str):
     NCCL = "nccl"
     UCC = "ucc"
     MPI = "mpi"
-
+    # Backend 插件
     _BackendPlugin = namedtuple("_BackendPlugin", ["creator_fn", "extended_api"])
 
     _plugins: Dict[str, _BackendPlugin] = {}
@@ -282,11 +282,11 @@ class Backend(str):
     # 类的静态方法：Sochin: TODO, 支持注册Backend
     @classmethod
     def register_backend(
-        cls,
-        name,
-        func,
+        cls,                                                    # 当前类本身
+        name,                                                   # Backend name
+        func,                                                   # 函数名
         extended_api=False,
-        devices: Optional[Union[str, List[str]]] = None,
+        devices: Optional[Union[str, List[str]]] = None,        # 设备
     ) -> None:
         """
         Register a new backend with the given name and instantiating function.
@@ -295,13 +295,15 @@ class Backend(str):
         register new backends.
 
         Args:
+            Backend 名称， init_process_group()中的Backend 应该匹配
             name (str): Backend name of the ``ProcessGroup`` extension. It
                         should match the one in ``init_process_group()``.
-            func (function): Function handler that instantiates the backend.
+            func (function): Function handler that instantiates the backend.    创建Backend的函数，四个参数
                              The function should be implemented in the backend
                              extension and takes four arguments, including
                              ``store``, ``rank``, ``world_size``, and ``timeout``.
-            extended_api (bool, optional): Whether the backend supports extended argument structure.
+            extended_api (bool, optional): Whether the backend supports extended argument structure. 是否支持扩展参数
+            c10d::DistributedBackendOptions
                                            Default: ``False``. If set to ``True``, the backend
                                            will get an instance of ``c10d::DistributedBackendOptions``, and
                                            a process group options object as defined by the backend implementation.
@@ -314,7 +316,7 @@ class Backend(str):
         """
         # Allow UCC plugin if Pytorch is not built with native support.
         # TODO: remove this exception once UCC plugin is fully deprecated.
-        # 什么是UCC插件 ???
+        # 什么是UCC插件 ???: unified collective communication
         if name != Backend.UCC or (name == Backend.UCC and is_ucc_available()):
             assert not hasattr(
                 Backend, name.upper()
@@ -322,14 +324,14 @@ class Backend(str):
         assert (
             name.upper() not in Backend._plugins
         ), f"{name.upper()} c10d backend creator function already exist"
-
+        # 添加字符串属性：例如 MLU = "mlu"
         setattr(Backend, name.upper(), name.lower())
-        Backend.backend_list.append(name.lower())
+        Backend.backend_list.append(name.lower())   # 添加到列表
         if devices is not None:
             for device in devices:
                 if device != "cpu" and device != "cuda":
-                    Backend.default_device_backend_map[device] = name.lower()
-        Backend.backend_type_map[name.lower()] = ProcessGroup.BackendType.CUSTOM
+                    Backend.default_device_backend_map[device] = name.lower()   # 设备对应的默认Backend
+        Backend.backend_type_map[name.lower()] = ProcessGroup.BackendType.CUSTOM # 用户自定义
 
         # Update device capability matrix in Backend class
         if devices is None:
@@ -340,13 +342,13 @@ class Backend(str):
                 "`cuda`. Please specify it via the `devices` argument of "
                 "`register_backend`."
             )
-            Backend.backend_capability[name.lower()] = ["cpu", "cuda"]
+            Backend.backend_capability[name.lower()] = ["cpu", "cuda"]          # 默认认为该Backend的支持设备cpu和cuda
         elif isinstance(devices, str):
             # Single device string specified. Simply convert to list.
-            Backend.backend_capability[name.lower()] = [devices]
+            Backend.backend_capability[name.lower()] = [devices]                # 当前Backend支持的特定设备字符串
         else:
-            Backend.backend_capability[name.lower()] = devices
-
+            Backend.backend_capability[name.lower()] = devices                  # 当前设备
+        # 创建一个后端插件对象：nampedtuple
         Backend._plugins[name.upper()] = Backend._BackendPlugin(func, extended_api)
 
 
@@ -362,13 +364,13 @@ class BackendConfig:
             # default config when backend is not specified
             # supported since PyTorch 2.0
             for device, default_backend in Backend.default_device_backend_map.items():
-                if is_backend_available(default_backend):
+                if is_backend_available(default_backend):   # 当前Backend是否使能
                     if (
                         default_backend == Backend.NCCL
                         and not torch.cuda.is_available()
                     ):
                         continue
-                    self.device_backend_map[device] = Backend(default_backend)
+                    self.device_backend_map[device] = Backend(default_backend)  # 设备到Backend的映射 {'cpu': GLOO, 'cuda': GLOO}
         elif backend.lower() in Backend.backend_list:
             # Cases for when backend is a single string (without device types)
             # e.g. "nccl", "gloo", "ucc", "mpi"
@@ -380,6 +382,7 @@ class BackendConfig:
             # make sure the backend string is in the correct format
             # "{device_type1}:{backend1},{device_type2}:{backend2}"
             # e.g. "cpu:gloo,cuda:nccl"
+            # 支持列表形式的Backend[ [ mlu:gloo  ] ,[mlu:mpi]]
             backend_str_error_message = f"""The custom backend string argument is invalid: {backend}.
                 Custom backend string is an experimental feature where the backend string must be in the format:
                 "<device_type1>:<backend1>,<device_type2>:<backend2>...". e.g. 'cpu:gloo,cuda:nccl'"""
@@ -498,13 +501,13 @@ class P2POp:
         tag: int = 0,
     ):
         """Create and return a new instance of the class."""
-        _check_op(op)
+        _check_op(op)                                               # 只支持isend/irecv
         _check_single_tensor(tensor, "tensor")
         return object.__new__(cls)
 
     def __repr__(self):
-        my_group_rank = get_rank(self.group)
-        peer_group_rank = (
+        my_group_rank = get_rank(self.group)            # 当前rank
+        peer_group_rank = (                             # 对端rank
             get_group_rank(self.group, self.peer) if self.group else self.peer
         )
         op_name = self.op.__name__
@@ -524,7 +527,7 @@ class P2POp:
 class _CollOp:
     """
     A class to capture collective operations.
-
+        集合操作
     Args:
         op (Callable): A collective function, e.g. ``torch.distributed.all_reduce``.
         tensor (Tensor): Tensor to operate on.
@@ -564,7 +567,7 @@ _backend: Optional[str] = None
 class _World:
     """
     Container class for c10d process group state.
-
+            c10d的进程组状态
     This is used during registration and lookup of PG state.
 
     .. warning:: This is an experimental API intended to expose the inner workings
@@ -573,14 +576,14 @@ class _World:
 
     def __init__(self):
         self._default_pg = None
-        self._pg_coalesce_state: Dict[ProcessGroup, List[_CollOp]] = {}
-        self._pg_default_device: Dict[ProcessGroup, torch.device] = {}
+        self._pg_coalesce_state: Dict[ProcessGroup, List[_CollOp]] = {} # 合并状态
+        self._pg_default_device: Dict[ProcessGroup, torch.device] = {}  # 默认的pg状态
 
     @property
     def default_pg(self) -> Optional[ProcessGroup]:
         """
         Process group that includes all ranks of the cluster.
-
+            进程组默认所有进程ranks
         This default ProcessGroup is used by c10d APIs when a ProcessGroup is needed
         but None is provided.
         """
@@ -693,7 +696,7 @@ class _World:
         return config_info
 
 
-_world = _World()
+_world = _World()   # 全局world对象
 """Holds the singleton instance of ``_World`` used by c10. Experimental extension point to override it"""
 
 
@@ -1463,9 +1466,9 @@ def init_process_group(
         init_method = "env://"  # 默认读env
 
     if backend:
-        backend = Backend(backend)
+        backend = Backend(backend)           # 指定Backend
     else:
-        backend = Backend("undefined")
+        backend = Backend("undefined")      # 未定义Backend
 
     if timeout is None:
         timeout = _get_default_timeout(backend)
@@ -1692,6 +1695,7 @@ def _new_process_group_helper(
     prefix_store = PrefixStore(f"{group_name}/", store)
     base_pg_options = ProcessGroup.Options(backend=str(backend))
     base_pg_options._timeout = timeout
+    # 依然创建ProcessGroup对象
     pg: ProcessGroup = ProcessGroup(
         prefix_store, group_rank, group_size, base_pg_options
     )
@@ -1701,10 +1705,11 @@ def _new_process_group_helper(
     backend_class: torch._C._distributed_c10d.Backend
     # 当前Backend支持的设备类型字符串
     for device, backend_str in backend_config.get_device_backend_map().items():
+        # mlu:gloo, mlu:mpi
         # Use the group name as prefix in the default store, such that
         # a single store can be reused by multiple groups.
         # 使用group name作为默认的store名
-        backend_prefix_store = PrefixStore(f"{device}/", prefix_store)
+        backend_prefix_store = PrefixStore(f"{device}/", prefix_store) # mlu
 
         if backend_str == Backend.MPI:
             if not is_mpi_available():
@@ -1774,10 +1779,10 @@ def _new_process_group_helper(
             assert (
                 backend_str.upper() in Backend._plugins
             ), f"Unknown c10d backend type {backend_str.upper()}"
-
+            # 用户注册的Backend
             backend_plugin = Backend._plugins[backend_str.upper()]
-            creator_fn = backend_plugin.creator_fn
-            extended_api = backend_plugin.extended_api
+            creator_fn = backend_plugin.creator_fn      # 创建函数
+            extended_api = backend_plugin.extended_api  # 是否带扩展选项
             backend_type = ProcessGroup.BackendType.CUSTOM
 
             if not extended_api:
@@ -1798,7 +1803,7 @@ def _new_process_group_helper(
         # Set sequence numbers for gloo and nccl backends.
         # 
         if backend_str == Backend.GLOO:
-            assert isinstance(backend_class, ProcessGroupGloo)
+            assert isinstance(backend_class, ProcessGroupGloo)      # 新创建的Backend继承自 ProcessGroupGloo
             backend_class._set_sequence_number_for_group()
         elif backend_str == Backend.NCCL:
             assert isinstance(backend_class, ProcessGroupNCCL)
@@ -1809,7 +1814,7 @@ def _new_process_group_helper(
         # ProcessGroup instance
         if issubclass(type(backend_class), ProcessGroup):
             pg = backend_class  # type: ignore[assignment]
-            break
+            break               # 这里直接退出去了，如何注册到C++的 Backend
 
         # Process group wrapper initialization for supported PGs when TORCH_DISTRIBUTED_DEBUG is set
         if (
@@ -1843,7 +1848,7 @@ def _new_process_group_helper(
 
             # break out of outer loop to not create any more backends
             break
-        # 逐个注册Backendend
+        # 逐个注册Backendend: mlu MLU 
         pg._register_backend(torch.device(device), backend_type, backend_class)
 
     # set group_name and group_dsec to backend

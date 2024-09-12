@@ -4,6 +4,9 @@ import subprocess
 def gen_linker_script(
     filein: str = "cmake/prioritized_text.txt", fout: str = "cmake/linker_script.ld"
 ) -> None:
+    """ 
+        生成链接脚本
+    """
     with open(filein) as f:
         prioritized_text = f.readlines()   # 读取
         prioritized_text = [

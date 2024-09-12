@@ -7,36 +7,45 @@ import sys
 from itertools import chain
 from typing import cast, Iterable
 
-
+# 判断操作系统
 IS_WINDOWS = platform.system() == "Windows"
 IS_DARWIN = platform.system() == "Darwin"
 IS_LINUX = platform.system() == "Linux"
-
+# 判断是否在conda环境
 IS_CONDA = (
     "conda" in sys.version
     or "Continuum" in sys.version
     or any(x.startswith("CONDA") for x in os.environ)
 )
+# conda bin目录
 CONDA_DIR = os.path.join(os.path.dirname(sys.executable), "..")
-
+# 64位判断
 IS_64BIT = struct.calcsize("P") == 8
-
+# 编译目录
 BUILD_DIR = "build"
 
 
 def check_env_flag(name: str, default: str = "") -> bool:
+    """ 
+        某个env是否使能
+    """
     return os.getenv(name, default).upper() in ["ON", "1", "YES", "TRUE", "Y"]
 
 
 def check_negative_env_flag(name: str, default: str = "") -> bool:
+    """ 
+        某个env是否未使能
+    """
     return os.getenv(name, default).upper() in ["OFF", "0", "NO", "FALSE", "N"]
 
 
 def gather_paths(env_vars: Iterable[str]) -> list[str]:
+    # 
     return list(chain(*(os.getenv(v, "").split(os.pathsep) for v in env_vars)))
 
 
 def lib_paths_from_base(base_path: str) -> list[str]:
+    """ 基于base的lib路径 """
     return [os.path.join(base_path, s) for s in ["lib/x64", "lib", "lib64"]]
 
 
@@ -71,21 +80,21 @@ class BuildType:
             # Normally it is anti-pattern to determine build type from CMAKE_BUILD_TYPE because it is not used for
             # multi-configuration build tools, such as Visual Studio and XCode. But since we always communicate with
             # CMake using CMAKE_BUILD_TYPE from our Python scripts, this is OK here.
-            self.build_type_string = cast(str, cmake_cache_vars["CMAKE_BUILD_TYPE"])
+            self.build_type_string = cast(str, cmake_cache_vars["CMAKE_BUILD_TYPE"])                # 编译蕾西
         else:
             self.build_type_string = os.environ.get("CMAKE_BUILD_TYPE", "Release")
 
     def is_debug(self) -> bool:
         "Checks Debug build."
-        return self.build_type_string == "Debug"
+        return self.build_type_string == "Debug"                                                    # Debug信息
 
     def is_rel_with_deb_info(self) -> bool:
         "Checks RelWithDebInfo build."
-        return self.build_type_string == "RelWithDebInfo"
+        return self.build_type_string == "RelWithDebInfo"                                           # 带debuginfo的release编译
 
     def is_release(self) -> bool:
         "Checks Release build."
-        return self.build_type_string == "Release"
+        return self.build_type_string == "Release"                                                  # 编译Release版本
 
 
 # hotpatch environment variable 'CMAKE_BUILD_TYPE'. 'CMAKE_BUILD_TYPE' always prevails over DEBUG or REL_WITH_DEB_INFO.

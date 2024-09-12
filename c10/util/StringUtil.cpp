@@ -15,7 +15,7 @@ namespace detail {
 
 std::string StripBasename(const std::string& full_path) {
 #ifdef _WIN32
-  const std::string separators("/\\");  // win32 路径分隔符 \\
+  const std::string separators("/\\");              // win32 路径分隔符
 #else
   const std::string separators("/");
 #endif

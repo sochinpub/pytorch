@@ -74,8 +74,8 @@ if __name__ == "__main__":
         type=distutils.util.strtobool,
         help="Whether this build is debug mode or not.",
     )
-    parser.add_argument("--cuda-version", "--cuda_version", type=str)
-    parser.add_argument("--hip-version", "--hip_version", type=str)
+    parser.add_argument("--cuda-version", "--cuda_version", type=str)       # 支持cuda 版本
+    parser.add_argument("--hip-version", "--hip_version", type=str)         # 什么是hip 版本
 
     args = parser.parse_args()
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     args.hip_version = None if args.hip_version == "" else args.hip_version
 
     pytorch_root = Path(__file__).parent.parent
-    version_path = pytorch_root / "torch" / "version.py"
+    version_path = pytorch_root / "torch" / "version.py"                        # 编译写入的torch版本文件
     # Attempt to get tag first, fall back to sha if a tag was not found
     tagged_version = get_tag(pytorch_root)
     sha = get_sha(pytorch_root)
