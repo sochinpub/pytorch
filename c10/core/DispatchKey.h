@@ -93,8 +93,11 @@ enum class BackendComponent : uint8_t {
 
   InvalidBit = 0,
 #define DEFINE_BACKEND_COMPONENT(n, _) n##Bit,
-  C10_FORALL_BACKEND_COMPONENTS(DEFINE_BACKEND_COMPONENT, unused)
+  C10_FORALL_BACKEND_COMPONENTS(DEFINE_BACKEND_COMPONENT, unused) // DEFINE_BACKEND_COMPONENT(CPU, unused)
 #undef DEFINE_BACKEND_COMPONENT
+  // CPUBit,
+  // ...
+  // MetaBit
 
   // Define an alias to represent end of backend dispatch keys.
   // If you add new backend keys after PrivateUse3, please also update it here.

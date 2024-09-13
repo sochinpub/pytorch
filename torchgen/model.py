@@ -35,7 +35,7 @@ from torchgen.utils import assert_never, NamespaceHelper, OrderedSet
 #   construction.
 
 
-# Represent a source location; used for better error reporting
+# Represent a source location; used for better error reporting： 代码的文件和行数
 @dataclass(frozen=True)
 class Location:
     file: str
@@ -45,9 +45,9 @@ class Location:
         return f"{self.file}:{self.line}"
 
 
-# Valid values of the 'variants' field in native_functions.yaml
+# Valid values of the 'variants' field in native_functions.yaml  Variant的枚举
 class Variant(Enum):
-    function = auto()
+    function = auto()       # 自动生成枚举常量的名称和值
     method = auto()
 
 
@@ -55,6 +55,7 @@ class Variant(Enum):
 DEFAULT_KERNEL_NAMESPACE = "at::native"
 
 # NOTE: Keep the list in sync with `DispatchKey` in c10/core/DispatchKey.h
+# 见DispatchKey.h
 BACKEND_COMPONENTS = "CPU CUDA HIP XLA MTIA MPS IPU XPU HPU VE Lazy Meta PrivateUse1 PrivateUse2 PrivateUse3".split()
 FUNCTIONALITY_KEYS = [
     "",
@@ -232,7 +233,7 @@ class DispatchKey(Enum):
 
     @staticmethod
     def parse(value: str) -> DispatchKey:
-        for k, v in DispatchKey.__members__.items():
+        for k, v in DispatchKey.__members__.items():    # 枚举的名称和值， 返回枚举值
             if k == value:
                 return v
         raise AssertionError(f"unknown dispatch key {value}")
@@ -246,8 +247,8 @@ class _TorchDispatchModeKey(Enum):
 
 def codegen_per_backend_entries() -> str:
     r = []
-    for fk in FUNCTIONALITY_KEYS:
-        for bc in BACKEND_COMPONENTS:
+    for fk in FUNCTIONALITY_KEYS:                   # 函数
+        for bc in BACKEND_COMPONENTS:               # 后端
             r.append(f"    {fk}{bc} = auto()")
     return "\n".join(r)
 
@@ -329,6 +330,7 @@ def is_ufunc_dispatch_key(dk: DispatchKey) -> bool:
 
 
 # This is oddly named ScalarType and not DType for symmetry with C++
+# 为了与C++对称， 被奇怪命名为ScalarType， 而非DType
 class ScalarType(Enum):
     Byte = auto()
     Char = auto()

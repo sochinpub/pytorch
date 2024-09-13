@@ -688,6 +688,7 @@ const char * typeKindToString(TypeKind kind) {
 #define CASE_TYPE(T) case TypeKind::T: return #T;
   switch(kind) {
     C10_FORALL_TYPES(CASE_TYPE)
+    // case TypeKind::AnyType return "AnyType";
   }
 #undef CASE_TYPE
   return "";
